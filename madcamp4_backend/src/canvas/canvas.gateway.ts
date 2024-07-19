@@ -2,7 +2,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGat
 import { Server, Socket } from 'socket.io';
 
 interface CanvasState {
-  [key: string]: { value: string; timestamp: number };
+  [key: string]: { value: number; timestamp: number };
 }
 
 @WebSocketGateway({
@@ -15,10 +15,11 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private canvasState: CanvasState = {};
+  private colors: string[] = [];
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
-    client.emit('canvasState', this.canvasState); // Send current state to new client
+    client.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Send current state to new client
   }
 
   handleDisconnect(client: Socket) {
@@ -26,12 +27,19 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('updateCanvas')
-  handleUpdateCanvas(@MessageBody() payload: { key: string; value: string; timestamp: number }, client: Socket): void {
+  handleUpdateCanvas(@MessageBody() payload: { key: string; value: number; timestamp: number }) {
     const { key, value, timestamp } = payload;
 
+    // Apply LWW logic and prevent duplicate requests
     if (!this.canvasState[key] || this.canvasState[key].timestamp < timestamp) {
       this.canvasState[key] = { value, timestamp };
-      this.server.emit('canvasState', this.canvasState); // Broadcast updated state to all clients
+      this.server.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Broadcast updated state to all clients
     }
+  }
+
+  @SubscribeMessage('clearCanvas')
+  handleClearCanvas() {
+    this.canvasState = {};
+    this.server.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Broadcast cleared state to all clients
   }
 }
