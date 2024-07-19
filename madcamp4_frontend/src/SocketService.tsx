@@ -4,14 +4,36 @@ class SocketService {
   socket: Socket;
 
   constructor() {
-    this.socket = io('http://localhost:3000');
+    this.socket = io('http://localhost:3001');
+
+    // Log connection events
+    this.socket.on('connect', () => {
+      console.log('Connected to the WebSocket server');
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log(`Disconnected: ${reason}`);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error(`Connection Error: ${error.message}`);
+    });
   }
 
   on(event: string, callback: (data: any) => void) {
-    this.socket.on(event, callback);
+    console.log(`Subscribing to event: ${event}`);
+    this.socket.on(event, (data) => {
+      console.log(`Event received: ${event}`, data);
+      callback(data);
+    });
+  }
+
+  off(event: string) {
+    this.socket.off(event);
   }
 
   emit(event: string, data: any) {
+    console.log(`Emitting event: ${event}`, data);
     this.socket.emit(event, data);
   }
 }

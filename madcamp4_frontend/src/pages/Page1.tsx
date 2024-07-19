@@ -28,7 +28,7 @@ const Page1: React.FC = () => {
       <div>
         <input
           type="text"
-          placeholder="Your name"
+          placeholder="My name!"
           value={sender}
           onChange={(e) => setSender(e.target.value)}
         />
