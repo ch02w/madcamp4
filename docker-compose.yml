@@ -28,7 +28,7 @@ services:
     networks:
       - madcamp4-network
     environment:
-      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
       - NODE_ENV=development
 
 networks:
