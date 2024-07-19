@@ -10,16 +10,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  @SubscribeMessage('message')
-  handleMessage(client: Socket, payload: { sender: string; message: string }): void {
-    this.server.emit('message', payload);
-  }
-
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+  }
+
+  @SubscribeMessage('message')
+  handleMessage(@MessageBody() payload: { sender: string; message: string }, client: Socket): void {
+    this.server.emit('message', payload);
   }
 }

@@ -10,6 +10,8 @@ services:
     command: npm run start:dev
     networks:
       - madcamp4-network
+    environment:
+      - CHOKIDAR_USEPOLLING=true
 
   frontend:
     build:
@@ -23,6 +25,8 @@ services:
     command: npm start
     networks:
       - madcamp4-network
+    environment:
+      - CHOKIDAR_USEPOLLING=true
 
 networks:
   madcamp4-network:

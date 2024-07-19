@@ -1,12 +1,13 @@
 import React from 'react';
+import Canvas from '../components/Canvas';
 
-const Page1: React.FC = () => {
+const Page2: React.FC = () => {
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold">Page 1</h1>
-      <p>This is page 2.</p>
+    <div>
+      <h1>CRDT Canvas</h1>
+      <Canvas />
     </div>
   );
 };
 
-export default Page1;
+export default Page2;
