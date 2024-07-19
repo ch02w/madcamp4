@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:3000');
 
-const App: React.FC = () => {
+const Page1: React.FC = () => {
   const [messages, setMessages] = useState<{ sender: string; message: string }[]>([]);
   const [input, setInput] = useState('');
   const [sender, setSender] = useState('');
@@ -53,4 +53,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default Page1;

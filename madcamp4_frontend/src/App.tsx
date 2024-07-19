@@ -11,10 +11,10 @@ const App: React.FC = () => {
     <Router>
       <NavBar />
       <Routes>
-        <Route path="/" element={<HomePage/>} />
-        <Route path="/page1" element={<Page1/>} />
-        <Route path="/page2" element={<Page2/>} />
-        <Route path="/page3" element={<Page3/>} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/page1" element={<Page1 />} />
+        <Route path="/page2" element={<Page2 />} />
+        <Route path="/page3" element={<Page3 />} />
       </Routes>
     </Router>
   );
