@@ -12,6 +12,7 @@ services:
       - madcamp4-network
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
 
   frontend:
     build:
@@ -27,6 +28,7 @@ services:
       - madcamp4-network
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
 
 networks:
   madcamp4-network:
