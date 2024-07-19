@@ -1,44 +1,29 @@
 version: '3.8'
 services:
-  madcamp4_backend:
-    build: ./madcamp4_backend
-    container_name: madcamp4_backend
-    restart: unless-stopped
+  backend:
+    build:
+      context: ./madcamp4_backend
     ports:
-      - "3000:3000"
-    depends_on:
-      - db
-    environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 3306
-      DATABASE_USER: root
-      DATABASE_PASSWORD: example
-      DATABASE_NAME: mydatabase
+      - '3001:3000'
     volumes:
-      - ./madcamp4_backend:/app
+      - ./madcamp4_backend:/usr/src/app
+    command: npm run start:dev
+    networks:
+      - madcamp4-network
 
-  madcamp4_frontend:
-    build: ./madcamp4_frontend
-    container_name: madcamp4_frontend
-    restart: unless-stopped
+  frontend:
+    build:
+      context: ./madcamp4_frontend
     ports:
-      - "3001:3000"
-    depends_on:
-      - madcamp4_backend
+      - '3000:3000'
     volumes:
-      - ./madcamp4_frontend:/app
+      - ./madcamp4_frontend:/usr/src/app
+    stdin_open: true
+    tty: true
+    command: npm start
+    networks:
+      - madcamp4-network
 
-  db:
-    image: mysql:latest
-    container_name: mysql_db
-    restart: unless-stopped
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: example
-      MYSQL_DATABASE: mydatabase
-    volumes:
-      - db_data:/var/lib/mysql
-
-volumes:
-  db_data:
+networks:
+  madcamp4-network:
+    driver: bridge
