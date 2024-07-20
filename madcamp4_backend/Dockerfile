@@ -1,8 +1,8 @@
 # Base image
-FROM node:16-alpine
+FROM node:20
 
 # Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
@@ -18,4 +18,4 @@ RUN npm run build
 EXPOSE 3000
 
 # Command to run the application
-CMD ["npm", "run", "start:prod"]
+CMD ["npm", "run", "start:dev"]

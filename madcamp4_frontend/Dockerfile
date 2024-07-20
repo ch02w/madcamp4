@@ -1,12 +1,13 @@
 # Base image
-FROM node:16-alpine
+FROM node:20
 
 # Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
 RUN npm install
+RUN npm install -g nodemon
 
 # Copy the rest of the application code
 COPY . .
@@ -15,4 +16,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["nodemon", "src/index"]
