@@ -9,18 +9,32 @@ interface CanvasState {
 const CRDTCanvas: React.FC = () => {
   const [canvasState, setCanvasState] = useState<CanvasState>({});
   const [canDraw, setCanDraw] = useState(true);
+  const [pause, setPause] = useState(false);
   const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
-  const [selectedColor, setSelectedColor] = useState<string>('black'); // 선택한 색상 상태 추가
+  const [selectedColor, setSelectedColor] = useState<string>('black');
+  const [showDownloadButton, setShowDownloadButton] = useState<boolean>(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     socketService.on('canvasState', (state: { colors: string[], data: CanvasState }) => {
-      console.log('Received canvas state:', state); // Log received state
+      console.log('Received canvas state:', state);
       setCanvasState(state.data);
+    });
+
+    socketService.on('clearCanvas', () => {
+      setShowDownloadButton(true);
+      setPause(true);
+      setTimeout(() => {
+        setPause(false);
+        clearCanvasLocally();
+        setShowDownloadButton(false);
+      }, 5000);
+      
     });
 
     return () => {
       socketService.off('canvasState');
+      socketService.off('clearCanvas');
     };
   }, []);
 
@@ -30,7 +44,7 @@ const CRDTCanvas: React.FC = () => {
         backgroundColor: 'rgba(0, 255, 0, 0.5)',
         transition: 'background-color 1s'
       });
-      const timeout = setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setFilterStyle({
           backgroundColor: 'transparent',
           transition: 'background-color 1s'
@@ -38,7 +52,7 @@ const CRDTCanvas: React.FC = () => {
         setCanDraw(true);
       }, 1000);
 
-      return () => clearTimeout(timeout);
+      return () => clearTimeout(timeoutId);
     }
   }, [canDraw]);
 
@@ -51,12 +65,12 @@ const CRDTCanvas: React.FC = () => {
   };
 
   const handleCanvasClick = (event: React.MouseEvent) => {
-    if (!canDraw) return;
+    if (!canDraw || pause) return;
 
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = Math.floor((event.clientX - rect.left) / 10) * 10;
     const y = Math.floor((event.clientY - rect.top) / 10) * 10;
-    updateCanvas(x, y, selectedColor); // 선택한 색상으로 업데이트
+    updateCanvas(x, y, selectedColor);
 
     setCanDraw(false);
   };
@@ -65,14 +79,45 @@ const CRDTCanvas: React.FC = () => {
     setSelectedColor(color.hex);
   };
 
+  const clearCanvasLocally = () => {
+    setCanvasState({});
+  };
+
+  const downloadImage = () => {
+    if (!canvasRef.current) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // 배경을 흰색으로 설정
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    Object.entries(canvasState).forEach(([key, { value }]) => {
+      const [_, x, y] = key.split('-');
+      ctx.fillStyle = value;
+      ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
+    });
+
+    const link = document.createElement('a');
+    link.download = 'canvas.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+
   const getBackgroundStyle = () => {
     const canvasImage = Object.entries(canvasState).map(([key, { value }]) => {
       const [_, x, y] = key.split('-');
       return (
         <div
           key={key}
+          className="absolute"
           style={{
-            position: 'absolute',
             left: `${x}px`,
             top: `${y}px`,
             width: '10px',
@@ -84,48 +129,35 @@ const CRDTCanvas: React.FC = () => {
     });
 
     return (
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: -1,
-          filter: 'blur(10px)',
-        }}
-      >
+      <div className="fixed top-0 left-0 w-full h-full z-[-1]">
         {canvasImage}
       </div>
     );
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div style={{ ...filterStyle, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1 }}>
+    <div className="relative w-full h-full">
+      <div
+        className="fixed top-0 left-0 w-full h-full"
+        style={{ 
+          ...filterStyle, transform: 'scale(1.5)', filter: 'blur(10px)' }}>
         {getBackgroundStyle()}
       </div>
       <div
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '800px',
-          height: '600px',
-          border: '1px solid black',
-          backgroundColor: 'white',
-          overflow: 'hidden',
-        }}
+        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] border border-black bg-white overflow-hidden"
       >
-        <div ref={canvasRef} className="Canvas" onClick={handleCanvasClick} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div
+          ref={canvasRef}
+          className="relative w-full h-full"
+          onClick={handleCanvasClick}
+        >
           {Object.entries(canvasState).map(([key, { value }]) => {
             const [_, x, y] = key.split('-');
             return (
               <div
                 key={key}
+                className="absolute"
                 style={{
-                  position: 'absolute',
                   left: `${x}px`,
                   top: `${y}px`,
                   width: '10px',
@@ -137,9 +169,19 @@ const CRDTCanvas: React.FC = () => {
           })}
         </div>
       </div>
-      <div style={{ position: 'fixed', top: '20px', left: '20px', zIndex: 10 }}>
+      <div className="fixed bottom-5 left-5 z-10">
         <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
       </div>
+      {showDownloadButton && (
+        <div className="fixed bottom-5 right-5 z-10">
+          <button
+            onClick={downloadImage}
+            className="bg-blue-500 text-white px-4 py-2 rounded"
+          >
+            Download Image
+          </button>
+        </div>
+      )}
     </div>
   );
 };

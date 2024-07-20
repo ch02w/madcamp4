@@ -1,4 +1,11 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
 interface CanvasState {
@@ -21,6 +28,12 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private canvasState: CanvasState = {};
   private colors: string[] = [];
+
+  constructor() {
+    setInterval(() => {
+      this.handleClearOperation();
+    }, 30000);
+  }
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -45,16 +58,28 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  handleDrawOperation(payload: { key: string; value: number; timestamp: number }) {
+  handleDrawOperation(payload: {
+    key: string;
+    value: number;
+    timestamp: number;
+  }) {
     const { key, value, timestamp } = payload;
     if (!this.canvasState[key] || this.canvasState[key].timestamp < timestamp) {
       this.canvasState[key] = { value, timestamp };
-      this.server.emit('canvasState', { colors: this.colors, data: this.canvasState });
+      this.server.emit('canvasState', {
+        colors: this.colors,
+        data: this.canvasState,
+      });
     }
   }
 
   handleClearOperation() {
     this.canvasState = {};
-    this.server.emit('canvasState', { colors: this.colors, data: this.canvasState });
+    this.colors = [];
+    this.server.emit('clearCanvas', {
+      colors: [],
+      data: this.canvasState,
+    });
+    console.log('Cleared canvas');
   }
 }
