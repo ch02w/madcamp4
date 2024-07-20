@@ -26,18 +26,24 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private canvasState: CanvasState = {};
-  private colors: string[] = [];
+  private canvasStates: CanvasState[] = [{}, {}, {}, {}, {}, {}];
+  private clearInterval = 300000; // 5 minutes in milliseconds
+  private lastClearTime = Date.now();
 
   constructor() {
     setInterval(() => {
       this.handleClearOperation();
-    }, 30000);
+    }, this.clearInterval);
+
+    setInterval(() => {
+      this.emitRemainingTime();
+    }, 1000);
   }
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
-    client.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Send current state to new client
+    client.emit('canvasState', { colors: [], data: this.canvasStates }); // Send current state to new client
+    client.emit('remainingTime', this.getRemainingTime());
   }
 
   handleDisconnect(client: Socket) {
@@ -59,27 +65,36 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDrawOperation(payload: {
+    canvasIndex: number;
     key: string;
     value: number;
     timestamp: number;
   }) {
-    const { key, value, timestamp } = payload;
-    if (!this.canvasState[key] || this.canvasState[key].timestamp < timestamp) {
-      this.canvasState[key] = { value, timestamp };
+    const { canvasIndex, key, value, timestamp } = payload;
+    if (!this.canvasStates[canvasIndex][key] || this.canvasStates[canvasIndex][key].timestamp < timestamp) {
+      this.canvasStates[canvasIndex][key] = { value, timestamp };
       this.server.emit('canvasState', {
-        colors: this.colors,
-        data: this.canvasState,
+        colors: [],
+        data: this.canvasStates,
       });
     }
   }
 
   handleClearOperation() {
-    this.canvasState = {};
-    this.colors = [];
+    this.canvasStates = [{}, {}, {}, {}, {}, {}];
     this.server.emit('clearCanvas', {
       colors: [],
-      data: this.canvasState,
+      data: this.canvasStates,
     });
+    this.lastClearTime = Date.now();
     console.log('Cleared canvas');
+  }
+
+  getRemainingTime() {
+    return this.clearInterval - (Date.now() - this.lastClearTime);
+  }
+
+  emitRemainingTime() {
+    this.server.emit('remainingTime', this.getRemainingTime());
   }
 }
