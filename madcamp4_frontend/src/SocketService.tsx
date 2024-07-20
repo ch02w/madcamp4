@@ -4,9 +4,12 @@ class SocketService {
   socket: Socket;
 
   constructor() {
-    this.socket = io('http://localhost:3001');
+    this.socket = io('http://localhost:3001', {
+      transports: ['websocket'],
+      reconnectionAttempts: 5,
+      timeout: 20000,
+    });
 
-    // Log connection events
     this.socket.on('connect', () => {
       console.log('Connected to the WebSocket server');
     });

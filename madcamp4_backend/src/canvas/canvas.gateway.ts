@@ -5,6 +5,11 @@ interface CanvasState {
   [key: string]: { value: number; timestamp: number };
 }
 
+interface CanvasOperation {
+  type: 'draw' | 'clear';
+  payload: any;
+}
+
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -26,20 +31,30 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('updateCanvas')
-  handleUpdateCanvas(@MessageBody() payload: { key: string; value: number; timestamp: number }) {
-    const { key, value, timestamp } = payload;
-
-    // Apply LWW logic and prevent duplicate requests
-    if (!this.canvasState[key] || this.canvasState[key].timestamp < timestamp) {
-      this.canvasState[key] = { value, timestamp };
-      this.server.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Broadcast updated state to all clients
+  @SubscribeMessage('canvasOperation')
+  handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
+    switch (operation.type) {
+      case 'draw':
+        this.handleDrawOperation(operation.payload);
+        break;
+      case 'clear':
+        this.handleClearOperation();
+        break;
+      default:
+        break;
     }
   }
 
-  @SubscribeMessage('clearCanvas')
-  handleClearCanvas() {
+  handleDrawOperation(payload: { key: string; value: number; timestamp: number }) {
+    const { key, value, timestamp } = payload;
+    if (!this.canvasState[key] || this.canvasState[key].timestamp < timestamp) {
+      this.canvasState[key] = { value, timestamp };
+      this.server.emit('canvasState', { colors: this.colors, data: this.canvasState });
+    }
+  }
+
+  handleClearOperation() {
     this.canvasState = {};
-    this.server.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Broadcast cleared state to all clients
+    this.server.emit('canvasState', { colors: this.colors, data: this.canvasState });
   }
 }

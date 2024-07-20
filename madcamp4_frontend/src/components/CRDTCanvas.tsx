@@ -1,29 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { SketchPicker } from 'react-color';
 import socketService from '../SocketService';
 
 interface CanvasState {
-  [key: string]: { value: number; timestamp: number };
-}
-
-interface CanvasUpdate {
-  key: string;
-  value: number;
-  timestamp: number;
+  [key: string]: { value: string; timestamp: number };
 }
 
 const CRDTCanvas: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [prevPos, setPrevPos] = useState<{ x: number; y: number } | null>(null);
   const [canvasState, setCanvasState] = useState<CanvasState>({});
-  const [colors, setColors] = useState<string[]>([]);
-  const drawnPixels = useRef(new Set<string>());
+  const [canDraw, setCanDraw] = useState(true);
+  const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
+  const [selectedColor, setSelectedColor] = useState<string>('black'); // 선택한 색상 상태 추가
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    socketService.on('canvasState', (state: { colors: string[]; data: CanvasState }) => {
-      setColors(state.colors);
+    socketService.on('canvasState', (state: { colors: string[], data: CanvasState }) => {
+      console.log('Received canvas state:', state); // Log received state
       setCanvasState(state.data);
-      drawCanvas(state.colors, state.data);
     });
 
     return () => {
@@ -31,120 +24,122 @@ const CRDTCanvas: React.FC = () => {
     };
   }, []);
 
-  const drawCanvas = (colors: string[], state: CanvasState) => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
+  useEffect(() => {
+    if (!canDraw) {
+      setFilterStyle({
+        backgroundColor: 'rgba(0, 255, 0, 0.5)',
+        transition: 'background-color 1s'
+      });
+      const timeout = setTimeout(() => {
+        setFilterStyle({
+          backgroundColor: 'transparent',
+          transition: 'background-color 1s'
+        });
+        setCanDraw(true);
+      }, 1000);
 
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-    Object.entries(state).forEach(([key, { value }]) => {
-      const [_, x, y] = key.split('-');
-      ctx.fillStyle = colors[value] as string;
-      ctx.fillRect(Number(x), Number(y), 5, 5);
-    });
-  };
-
-  const rgbToHex = (r: number, g: number, b: number) =>
-    ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
-
-  const updateCanvas = (x: number, y: number, color: [number, number, number]) => {
-    const hexColor = rgbToHex(color[0], color[1], color[2]);
-    let colorIndex = colors.indexOf(hexColor);
-
-    if (colorIndex === -1) {
-      setColors((prevColors) => [...prevColors, hexColor]);
-      colorIndex = colors.length; // New color index
+      return () => clearTimeout(timeout);
     }
+  }, [canDraw]);
 
+  const updateCanvas = (x: number, y: number, value: string) => {
     const key = `pixel-${x}-${y}`;
     const timestamp = Date.now();
-    const payload: CanvasUpdate = { key, value: colorIndex, timestamp };
-    socketService.emit('updateCanvas', payload);
+    const payload = { key, value, timestamp };
+    console.log('Emitting updateCanvas event:', payload);
+    socketService.emit('canvasOperation', { type: 'draw', payload });
   };
 
-  const handleMouseDown = (event: React.MouseEvent) => {
-    setIsDrawing(true);
-    const { x, y } = getMousePos(event);
-    setPrevPos({ x, y });
-    paint(x, y);
+  const handleCanvasClick = (event: React.MouseEvent) => {
+    if (!canDraw) return;
+
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = Math.floor((event.clientX - rect.left) / 10) * 10;
+    const y = Math.floor((event.clientY - rect.top) / 10) * 10;
+    updateCanvas(x, y, selectedColor); // 선택한 색상으로 업데이트
+
+    setCanDraw(false);
   };
 
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-    setPrevPos(null);
-    drawnPixels.current.clear(); // Clear the set of drawn pixels
+  const handleColorChange = (color: any) => {
+    setSelectedColor(color.hex);
   };
 
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (isDrawing) {
-      const { x, y } = getMousePos(event);
-      if (prevPos) {
-        drawLine(prevPos.x, prevPos.y, x, y);
-        setPrevPos({ x, y });
-      }
-    }
-  };
+  const getBackgroundStyle = () => {
+    const canvasImage = Object.entries(canvasState).map(([key, { value }]) => {
+      const [_, x, y] = key.split('-');
+      return (
+        <div
+          key={key}
+          style={{
+            position: 'absolute',
+            left: `${x}px`,
+            top: `${y}px`,
+            width: '10px',
+            height: '10px',
+            backgroundColor: value,
+          }}
+        ></div>
+      );
+    });
 
-  const getMousePos = (event: React.MouseEvent) => {
-    if (!canvasRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.floor(event.clientX - rect.left);
-    const y = Math.floor(event.clientY - rect.top);
-    return { x, y };
-  };
-
-  const paint = (x: number, y: number) => {
-    const key = `pixel-${x}-${y}`;
-    if (!drawnPixels.current.has(key)) {
-      drawLine(prevPos?.x ?? x, prevPos?.y ?? y, x, y);
-      drawnPixels.current.add(key);
-      updateCanvas(x, y, [0, 0, 0]); // For simplicity, set a fixed color
-    }
-  };
-
-  const drawLine = (x0: number, y0: number, x1: number, y1: number) => {
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const steps = Math.max(Math.abs(dx), Math.abs(dy));
-    const xinc = dx / steps;
-    const yinc = dy / steps;
-    let x = x0;
-    let y = y0;
-
-    for (let i = 0; i <= steps; i++) {
-      const key = `pixel-${Math.round(x)}-${Math.round(y)}`;
-      if (!drawnPixels.current.has(key)) {
-        updateCanvas(Math.round(x), Math.round(y), [0, 0, 0]);
-        drawnPixels.current.add(key);
-      }
-      x += xinc;
-      y += yinc;
-    }
-  };
-
-  const clearCanvas = () => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    setCanvasState({});
-    socketService.emit('clearCanvas', {});
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: -1,
+          filter: 'blur(10px)',
+        }}
+      >
+        {canvasImage}
+      </div>
+    );
   };
 
   return (
-    <div>
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        style={{ border: '1px solid black' }}
-      />
-      <button onClick={clearCanvas}>Clear Canvas</button>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div style={{ ...filterStyle, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1 }}>
+        {getBackgroundStyle()}
+      </div>
+      <div
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '800px',
+          height: '600px',
+          border: '1px solid black',
+          backgroundColor: 'white',
+          overflow: 'hidden',
+        }}
+      >
+        <div ref={canvasRef} className="Canvas" onClick={handleCanvasClick} style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {Object.entries(canvasState).map(([key, { value }]) => {
+            const [_, x, y] = key.split('-');
+            return (
+              <div
+                key={key}
+                style={{
+                  position: 'absolute',
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: value,
+                }}
+              ></div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ position: 'fixed', top: '20px', left: '20px', zIndex: 10 }}>
+        <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
+      </div>
     </div>
   );
 };
