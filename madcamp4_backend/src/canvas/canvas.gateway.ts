@@ -1,60 +1,194 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import React, { useEffect, useState, useRef } from 'react';
+import { SketchPicker } from 'react-color';
+import socketService from '../SocketService';
 
 interface CanvasState {
-  [key: string]: { value: number; timestamp: number };
+  [key: string]: { value: string; timestamp: number };
 }
 
-interface CanvasOperation {
-  type: 'draw' | 'clear';
-  payload: any;
-}
+const CRDTCanvas: React.FC = () => {
+  const [canvasState, setCanvasState] = useState<CanvasState>({});
+  const [canDraw, setCanDraw] = useState(true);
+  const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
+  const [selectedColor, setSelectedColor] = useState<string>('black');
+  const [showDownloadButton, setShowDownloadButton] = useState<boolean>(false);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
-@WebSocketGateway({
-  cors: {
-    origin: '*',
-  },
-})
-export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server: Server;
+  useEffect(() => {
+    socketService.on('canvasState', (state: { colors: string[], data: CanvasState }) => {
+      console.log('Received canvas state:', state);
+      setCanvasState(state.data);
+    });
 
-  private canvasState: CanvasState = {};
-  private colors: string[] = [];
+    socketService.on('clearCanvas', () => {
+      clearCanvasLocally();
+    });
 
-  handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
-    client.emit('canvasState', { colors: this.colors, data: this.canvasState }); // Send current state to new client
-  }
+    return () => {
+      socketService.off('canvasState');
+      socketService.off('clearCanvas');
+    };
+  }, []);
 
-  handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
-  }
+  useEffect(() => {
+    if (!canDraw) {
+      setFilterStyle({
+        backgroundColor: 'rgba(0, 255, 0, 0.5)',
+        transition: 'background-color 1s'
+      });
+      const timeoutId = setTimeout(() => {
+        setFilterStyle({
+          backgroundColor: 'transparent',
+          transition: 'background-color 1s'
+        });
+        setCanDraw(true);
+      }, 1000);
 
-  @SubscribeMessage('canvasOperation')
-  handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
-    switch (operation.type) {
-      case 'draw':
-        this.handleDrawOperation(operation.payload);
-        break;
-      case 'clear':
-        this.handleClearOperation();
-        break;
-      default:
-        break;
+      return () => clearTimeout(timeoutId);
     }
-  }
+  }, [canDraw]);
 
-  handleDrawOperation(payload: { key: string; value: number; timestamp: number }) {
-    const { key, value, timestamp } = payload;
-    if (!this.canvasState[key] || this.canvasState[key].timestamp < timestamp) {
-      this.canvasState[key] = { value, timestamp };
-      this.server.emit('canvasState', { colors: this.colors, data: this.canvasState });
-    }
-  }
+  const updateCanvas = (x: number, y: number, value: string) => {
+    const key = `pixel-${x}-${y}`;
+    const timestamp = Date.now();
+    const payload = { key, value, timestamp };
+    console.log('Emitting updateCanvas event:', payload);
+    socketService.emit('canvasOperation', { type: 'draw', payload });
+  };
 
-  handleClearOperation() {
-    this.canvasState = {};
-    this.server.emit('canvasState', { colors: this.colors, data: this.canvasState });
-  }
-}
+  const handleCanvasClick = (event: React.MouseEvent) => {
+    if (!canDraw) return;
+
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = Math.floor((event.clientX - rect.left) / 10) * 10;
+    const y = Math.floor((event.clientY - rect.top) / 10) * 10;
+    updateCanvas(x, y, selectedColor);
+
+    setCanDraw(false);
+  };
+
+  const handleColorChange = (color: any) => {
+    setSelectedColor(color.hex);
+  };
+
+  const clearCanvasLocally = () => {
+    setCanvasState({});
+    setShowDownloadButton(true);
+    setTimeout(() => {
+      setShowDownloadButton(false);
+    }, 5000); // 5초 뒤에 버튼 사라짐
+  };
+
+  const clearCanvas = () => {
+    clearCanvasLocally();
+    socketService.emit('clearCanvas'); // 서버로 clear 요청 보냄
+  };
+
+  const downloadImage = () => {
+    if (!canvasRef.current) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    Object.entries(canvasState).forEach(([key, { value }]) => {
+      const [_, x, y] = key.split('-');
+      ctx.fillStyle = value;
+      ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
+    });
+
+    const link = document.createElement('a');
+    link.download = 'canvas.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+
+  const getBackgroundStyle = () => {
+    const canvasImage = Object.entries(canvasState).map(([key, { value }]) => {
+      const [_, x, y] = key.split('-');
+      return (
+        <div
+          key={key}
+      className="absolute"
+      style={{
+        left: `${x}px`,
+          top: `${y}px`,
+          width: '10px',
+          height: '10px',
+          backgroundColor: value,
+      }}
+    ></div>
+    );
+    });
+
+    return (
+      <div className="fixed top-0 left-0 w-full h-full z-[-1]">
+        {canvasImage}
+        </div>
+    );
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <div
+        className="fixed top-0 left-0 w-full h-full blur-[10px]"
+        style={filterStyle}
+    >
+    {getBackgroundStyle()}
+    </div>
+    <div
+  className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] border border-black bg-white overflow-hidden"
+  >
+  <div
+    ref={canvasRef}
+  className="relative w-full h-full"
+  onClick={handleCanvasClick}
+    >
+    {Object.entries(canvasState).map(([key, { value }]) => {
+        const [_, x, y] = key.split('-');
+        return (
+          <div
+            key={key}
+        className="absolute"
+        style={{
+          left: `${x}px`,
+            top: `${y}px`,
+            width: '10px',
+            height: '10px',
+            backgroundColor: value,
+        }}
+      ></div>
+      );
+      })}
+    </div>
+    </div>
+    <div className="fixed bottom-5 left-5 z-10">
+  <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
+  </div>
+  <div className="fixed bottom-5 left-32 z-10">
+  <button
+    onClick={clearCanvas}
+  className="bg-red-500 text-white px-4 py-2 rounded"
+    >
+    Clear Canvas
+  </button>
+  </div>
+  {showDownloadButton && (
+    <div className="fixed bottom-5 left-60 z-10">
+    <button
+      onClick={downloadImage}
+    className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+      Download Image
+  </button>
+  </div>
+  )}
+  </div>
+);
+};
+
+export default CRDTCanvas;
