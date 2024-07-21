@@ -3,8 +3,7 @@ import CRDTCanvas from '../components/CRDTCanvas';
 
 const Page2: React.FC = () => {
   return (
-    <div>
-      <h1>CRDT Canvas!</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center">
       <CRDTCanvas />
     </div>
   );
