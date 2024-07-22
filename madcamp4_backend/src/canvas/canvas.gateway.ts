@@ -7,6 +7,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import * as THREE from 'three';
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -26,14 +27,24 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private canvasStates: CanvasState[] = [{}, {}, {}, {}, {}, {}];
-  private clearInterval = 300000; // 5 minutes in milliseconds
-  private lastClearTime = Date.now();
+  private canvasStates: CanvasState[] = Array(6).fill(null).map(() => {
+    const state: CanvasState = {};
+    for (let x = 0; x < 200; x += 10) {
+      for (let y = 0; y < 200; y += 10) {
+        state[`pixel-${x}-${y}`] = { value: 0xFFFFFF, timestamp: Date.now() }; // Initial color is white
+      }
+    }
+    return state;
+  });
+
+  private drawInterval = 270000; // 4.5 minutes in milliseconds
+  private breakInterval = 30000; // 30 seconds in milliseconds
+  private roundInterval = this.drawInterval + this.breakInterval;
 
   constructor() {
     setInterval(() => {
-      this.handleClearOperation();
-    }, this.clearInterval);
+      this.handleRound();
+    }, this.roundInterval);
 
     setInterval(() => {
       this.emitRemainingTime();
@@ -51,7 +62,9 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('canvasOperation')
-  handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
+  async handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
+    if (!this.isDrawingActive() && operation.type === 'draw') return; // Ignore draw operations during break
+
     switch (operation.type) {
       case 'draw':
         this.handleDrawOperation(operation.payload);
@@ -81,20 +94,76 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleClearOperation() {
-    this.canvasStates = [{}, {}, {}, {}, {}, {}];
+    this.canvasStates = Array(6).fill(null).map(() => {
+      const state: CanvasState = {};
+      for (let x = 0; x < 200; x += 10) {
+        for (let y = 0; y < 200; y += 10) {
+          state[`pixel-${x}-${y}`] = { value: 0xFFFFFF, timestamp: Date.now() }; // Initial color is white
+        }
+      }
+      return state;
+    });
+
     this.server.emit('clearCanvas', {
       colors: [],
       data: this.canvasStates,
     });
-    this.lastClearTime = Date.now();
     console.log('Cleared canvas');
   }
 
+  handleRound() {
+    if (this.isDrawingActive()) {
+      this.handleClearOperation();
+      this.generateGLB();
+    }
+  }
+
+  isDrawingActive() {
+    const currentTime = new Date();
+    const minutes = currentTime.getUTCMinutes();
+    const seconds = currentTime.getUTCSeconds();
+    const milliseconds = currentTime.getUTCMilliseconds();
+    const totalMilliseconds = (minutes % 5) * 60000 + seconds * 1000 + milliseconds;
+
+    return totalMilliseconds < this.drawInterval;
+  }
+
   getRemainingTime() {
-    return this.clearInterval - (Date.now() - this.lastClearTime);
+    const currentTime = new Date();
+    const minutes = currentTime.getUTCMinutes();
+    const seconds = currentTime.getUTCSeconds();
+    const milliseconds = currentTime.getUTCMilliseconds();
+    const totalMilliseconds = (minutes % 5) * 60000 + seconds * 1000 + milliseconds;
+
+    return this.roundInterval - totalMilliseconds;
   }
 
   emitRemainingTime() {
     this.server.emit('remainingTime', this.getRemainingTime());
+  }
+
+  async generateGLB() {
+    const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
+    
+    const scene = new THREE.Scene();
+    const material = new THREE.MeshBasicMaterial({ vertexColors: true });
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const mesh = new THREE.Mesh(geometry, material);
+
+    scene.add(mesh);
+
+    const exporter = new GLTFExporter();
+    exporter.parse(
+      scene,
+      (result) => {
+        const output = JSON.stringify(result, null, 2);
+        const blob = new Blob([output], { type: 'application/octet-stream' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'canvas.glb';
+        link.click();
+      },
+      (error) => console.error('An error occurred during parsing', error)
+    );
   }
 }
