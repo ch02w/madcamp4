@@ -1,13 +1,20 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 interface CanvasState {
-  [key: string]: { value: string; timestamp: number };
+  [key: string]: { value: number; timestamp: number };
 }
 
 const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [cameraState, setCameraState] = useState<{
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+  }>({
+    position: new THREE.Vector3(0, 0, 2),
+    rotation: new THREE.Euler(0, 0, 0),
+  });
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -15,6 +22,9 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+    camera.position.copy(cameraState.position);
+    camera.rotation.copy(cameraState.rotation);
+
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
@@ -35,7 +45,7 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         Object.entries(canvasState).forEach(([key, { value }]) => {
           const [_, x, y] = key.split('-');
-          ctx.fillStyle = value;
+          ctx.fillStyle = `#${value.toString(16).padStart(6, '0')}`;
           ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
         });
       }
@@ -44,22 +54,30 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
     });
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const cube = new THREE.Mesh(geometry, materialArray);
+    const materials = [
+      materialArray[2], // Front (z+)
+      materialArray[1], // Back (z-)
+      materialArray[4], // Top (y+)
+      materialArray[0], // Bottom (y-)
+      materialArray[5], // Left (x-)
+      materialArray[3], // Right (x+)
+    ];
+    const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
 
-    camera.position.z = 2;
-
-    const animate = function () {
+    const animate = () => {
       requestAnimationFrame(animate);
-
       controls.update();
-
       renderer.render(scene, camera);
     };
 
     animate();
 
     return () => {
+      setCameraState({
+        position: camera.position.clone(),
+        rotation: camera.rotation.clone(),
+      });
       mount.removeChild(renderer.domElement);
     };
   }, [canvasStates]);

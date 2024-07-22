@@ -2,41 +2,45 @@ import React, { useState, useEffect } from 'react';
 import CRDTCanvas from '../components/CRDTCanvas';
 import socketService from '../SocketService';
 import { SketchPicker, ColorResult } from 'react-color';
+import ThreeView from '../components/ThreeView';
 
 const Page2: React.FC = () => {
-  const [remainingTime, setRemainingTime] = useState<number>(300000); // 5 minutes in milliseconds
+  const [remainingTime, setRemainingTime] = useState<number>(0);
   const [pause, setPause] = useState<boolean>(false);
   const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({});
   const [selectedColor, setSelectedColor] = useState<string>('black');
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [canvasStates, setCanvasStates] = useState<any[]>([{},{},{},{},{},{}]);
 
   useEffect(() => {
     socketService.on('remainingTime', (time: number) => {
       setRemainingTime(time);
-      setPause(time <= 30000); // If remaining time is less than or equal to 30 seconds, it's a break
+      setPause(time <= 30000);
     });
 
-    return () => {
-      socketService.off('remainingTime');
-    };
-  }, []);
+    socketService.on('canvasState', (state: { colors: string[], data: any[] }) => {
+      setCanvasStates(state.data);
+    });
 
-  useEffect(() => {
-    if (pause) {
+    socketService.on('clearCanvas', () => {
       setBackgroundStyle({
         backgroundColor: 'rgba(0, 255, 0, 0.5)',
         transition: 'background-color 1s'
       });
-      const timeoutId = setTimeout(() => {
+      setTimeout(() => {
         setBackgroundStyle({
           backgroundColor: 'transparent',
           transition: 'background-color 1s'
         });
       }, 1000);
+    });
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [pause]);
+    return () => {
+      socketService.off('remainingTime');
+      socketService.off('canvasState');
+      socketService.off('clearCanvas');
+    };
+  }, []);
 
   const getTimeText = () => {
     if (pause) {
@@ -45,22 +49,18 @@ const Page2: React.FC = () => {
     return `Drawing time: ${Math.floor(remainingTime / 1000)} seconds`;
   };
 
-  const handleCanvasClick = () => {
-    // This function will be passed to CRDTCanvas and called on canvas click
-    console.log("Canvas clicked");
-  };
-
   const handleColorChange = (color: ColorResult) => {
     setSelectedColor(color.hex);
   };
 
   return (
-    <div className="p-4 flex flex-col" style={{ ...backgroundStyle, height: 'calc(100vh - 8rem)' }}>
-      <div className="w-full text-center bg-white text-black px-4 py-2 rounded mb-4">
+    <div className="p-4 flex flex-col" style={{ ...backgroundStyle, height: 'calc(100vh - 4rem)' }}>
+      <div className="w-full text-center text-black px-4 py-2 rounded mb-4">
         {getTimeText()}
       </div>
-      <div className="flex flex-col items-center justify-center flex-grow">
-        <CRDTCanvas pause={pause} onCanvasClick={handleCanvasClick} selectedColor={selectedColor} />
+      <div className="flex items-center justify-center">
+        <CRDTCanvas pause={pause} selectedColor={selectedColor} />
+        <ThreeView canvasStates={canvasStates} />
       </div>
       <div className="fixed bottom-5 left-5 z-20 space-x-2 flex">
         <button
