@@ -172,15 +172,13 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async generateGLB() {
-    const { GLTFExporter } = await (eval(`import(
-      'three/examples/jsm/exporters/GLTFExporter.js'
-    )`) as Promise<typeof import('three/examples/jsm/exporters/GLTFExporter')>);
+    const { GLTFExporter } = await (eval(`import('three/examples/jsm/exporters/GLTFExporter.js')`) as Promise<
+      typeof import('three/examples/jsm/exporters/GLTFExporter')
+    >);
 
     const scene = new THREE.Scene();
     const materialArray = this.canvasStates.map((canvasState) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 200;
-      canvas.height = 200;
+      const canvas = createCanvas(200, 200);
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.fillStyle = 'white';
@@ -191,7 +189,7 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
           ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
         });
       }
-      const texture = new THREE.CanvasTexture(canvas);
+      const texture = new THREE.CanvasTexture(canvas as unknown as HTMLCanvasElement);
       return new THREE.MeshBasicMaterial({ map: texture });
     });
 

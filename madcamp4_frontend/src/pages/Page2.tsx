@@ -59,8 +59,10 @@ const Page2: React.FC = () => {
         {getTimeText()}
       </div>
       <div className="flex items-center justify-center">
-        <CRDTCanvas pause={pause} selectedColor={selectedColor} />
-        <ThreeView canvasStates={canvasStates} />
+        <div className="flex">
+          <CRDTCanvas pause={pause} selectedColor={selectedColor} />
+          <ThreeView canvasStates={canvasStates} />
+        </div>
       </div>
       <div className="fixed bottom-5 left-5 z-20 space-x-2 flex">
         <button

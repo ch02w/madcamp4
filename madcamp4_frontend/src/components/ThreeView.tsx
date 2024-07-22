@@ -55,12 +55,12 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const materials = [
-      materialArray[2], // Front (z+)
+      materialArray[0], // Front (z+)
       materialArray[1], // Back (z-)
-      materialArray[4], // Top (y+)
-      materialArray[0], // Bottom (y-)
-      materialArray[5], // Left (x-)
-      materialArray[3], // Right (x+)
+      materialArray[2], // Top (y+)
+      materialArray[3], // Bottom (y-)
+      materialArray[4], // Left (x-)
+      materialArray[5], // Right (x+)
     ];
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
