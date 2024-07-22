@@ -31,13 +31,16 @@
     "canvas": "^2.11.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "ethers": "^6.13.1",
+    "hardhat": "^2.22.6",
     "mysql2": "^3.10.3",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "sequelize": "^6.37.3",
     "sequelize-typescript": "^2.1.6",
     "socket.io": "^4.7.5",
-    "three": "^0.166.1"
+    "three": "^0.166.1",
+    "web3": "^4.11.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
