@@ -23,12 +23,12 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.screenSpacePanning = false;
-    controls.maxPolarAngle = Math.PI / 2;
+    controls.maxPolarAngle = Math.PI;
 
     const materialArray = canvasStates.map((canvasState) => {
       const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
+      canvas.width = 200;
+      canvas.height = 200;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.fillStyle = 'white';
@@ -51,9 +51,6 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
 
     const animate = function () {
       requestAnimationFrame(animate);
-
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
 
       controls.update();
 

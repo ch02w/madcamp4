@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { SketchPicker } from 'react-color';
 import socketService from '../SocketService';
 import ThreeView from './ThreeView';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
@@ -9,19 +8,33 @@ interface CanvasState {
   [key: string]: { value: string; timestamp: number };
 }
 
-const CRDTCanvas: React.FC = () => {
+interface CRDTCanvasProps {
+  onCanvasClick: () => void;
+  pause: boolean;
+  selectedColor: string;
+}
+
+const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ onCanvasClick, pause, selectedColor }) => {
   const [canvasStates, setCanvasStates] = useState<CanvasState[]>([{},{},{},{},{},{}]);
   const [canDraw, setCanDraw] = useState(true);
-  const [pause, setPause] = useState(false);
   const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
-  const [selectedColor, setSelectedColor] = useState<string>('black');
   const [showDownloadButton, setShowDownloadButton] = useState<boolean>(false);
-  const [showCubeButton, setShowCubeButton] = useState<boolean>(false);
+  const [showCubeButton, setShowCubeButton] = useState<boolean>(true);
   const [showCubeView, setShowCubeView] = useState<boolean>(false);
-  const [remainingTime, setRemainingTime] = useState<number>(300000); // 5 minutes in milliseconds
   const canvasRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
 
   useEffect(() => {
+    const initialCanvasStates = Array(6).fill(null).map(() => {
+      const state: CanvasState = {};
+      for (let x = 0; x < 200; x += 10) {
+        for (let y = 0; y < 200; y += 10) {
+          state[`pixel-${x}-${y}`] = { value: '#FFFFFF', timestamp: Date.now() }; // Initial color is white
+        }
+      }
+      return state;
+    });
+    setCanvasStates(initialCanvasStates);
+
     socketService.on('canvasState', (state: { colors: string[], data: CanvasState[] }) => {
       console.log('Received canvas state:', state);
       setCanvasStates(state.data);
@@ -30,23 +43,16 @@ const CRDTCanvas: React.FC = () => {
     socketService.on('clearCanvas', () => {
       setShowDownloadButton(true);
       setShowCubeButton(true);
-      setPause(true);
       setTimeout(() => {
-        setPause(false);
         clearCanvasLocally();
         setShowDownloadButton(false);
         setShowCubeButton(false);
       }, 30000);
     });
 
-    socketService.on('remainingTime', (time: number) => {
-      setRemainingTime(time);
-    });
-
     return () => {
       socketService.off('canvasState');
       socketService.off('clearCanvas');
-      socketService.off('remainingTime');
     };
   }, []);
 
@@ -80,19 +86,26 @@ const CRDTCanvas: React.FC = () => {
     if (!canDraw || pause) return;
 
     const rect = canvasRefs[canvasIndex].current!.getBoundingClientRect();
-    const x = Math.floor((event.clientX - rect.left) / 10) * 10;
-    const y = Math.floor((event.clientY - rect.top) / 10) * 10;
+    const borderWidth = 1;
+    const x = Math.floor((event.clientX - rect.left - borderWidth) / 10) * 10;
+    const y = Math.floor((event.clientY - rect.top - borderWidth) / 10) * 10;
     updateCanvas(canvasIndex, x, y, selectedColor);
 
     setCanDraw(false);
-  };
-
-  const handleColorChange = (color: any) => {
-    setSelectedColor(color.hex);
+    onCanvasClick(); // Notify parent component about the canvas click
   };
 
   const clearCanvasLocally = () => {
-    setCanvasStates([{}, {}, {}, {}, {}, {}]);
+    const initialCanvasStates = Array(6).fill(null).map(() => {
+      const state: CanvasState = {};
+      for (let x = 0; x < 200; x += 10) {
+        for (let y = 0; y < 200; y += 10) {
+          state[`pixel-${x}-${y}`] = { value: '#FFFFFF', timestamp: Date.now() }; // Initial color is white
+        }
+      }
+      return state;
+    });
+    setCanvasStates(initialCanvasStates);
   };
 
   const downloadImage = () => {
@@ -114,7 +127,7 @@ const CRDTCanvas: React.FC = () => {
       Object.entries(canvasStates[index]).forEach(([key, { value }]) => {
         const [_, x, y] = key.split('-');
         ctx.fillStyle = value;
-        ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
+        ctx.fillRect(parseInt(x, 10), parseInt(y, 10), 10, 10);
       });
 
       const link = document.createElement('a');
@@ -166,28 +179,28 @@ const CRDTCanvas: React.FC = () => {
     });
 
     return (
-      <div className="fixed top-0 left-0 w-full h-full z-[-1]">
+      <div className="absolute inset-0">
         {canvasImage}
       </div>
     );
   };
 
   return (
-    <div className="relative w-full h-full">
-      <div className="fixed top-0 left-0 w-full h-full" style={{ ...filterStyle, transform: 'scale(1.5)', filter: 'blur(10px)' }}>
+    <div className="relative w-full h-auto mt-4">
+      <div className="absolute inset-0" style={{ ...filterStyle, transform: 'scale(1.5)', filter: 'blur(10px)', zIndex: -1 }}>
         {canvasStates.map((_, index) => getBackgroundStyle(index))}
       </div>
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 grid grid-cols-3 grid-rows-4 gap-1 w-[600px] h-[800px]">
+      <div className="relative w-[800px] h-[600px] mx-auto grid grid-cols-4 grid-rows-3 gap-0">
         {canvasStates.map((_, index) => (
           <div
             key={index}
             ref={canvasRefs[index]}
-            className={`relative w-full h-full border ${index === 0 ? 'row-start-1 row-end-2 col-start-2 col-end-3' : ''} 
+            className={`relative w-[202px] h-[202px] border ${index === 2 ? 'row-start-1 row-end-2 col-start-2 col-end-3' : ''} 
                 ${index === 1 ? 'row-start-2 row-end-3 col-start-1 col-end-2' : ''} 
-                ${index === 2 ? 'row-start-2 row-end-3 col-start-2 col-end-3' : ''} 
-                ${index === 3 ? 'row-start-2 row-end-3 col-start-3 col-end-4' : ''} 
-                ${index === 4 ? 'row-start-3 row-end-4 col-start-2 col-end-3' : ''} 
-                ${index === 5 ? 'row-start-4 row-end-5 col-start-2 col-end-3' : ''}`}
+                ${index === 4 ? 'row-start-2 row-end-3 col-start-2 col-end-3' : ''} 
+                ${index === 0 ? 'row-start-2 row-end-3 col-start-3 col-end-4' : ''} 
+                ${index === 5 ? 'row-start-2 row-end-3 col-start-4 col-end-5' : ''} 
+                ${index === 3 ? 'row-start-3 row-end-4 col-start-2 col-end-3' : ''}`}
             onClick={(e) => handleCanvasClick(index, e)}
           >
             {Object.entries(canvasStates[index]).map(([key, { value }]) => {
@@ -209,21 +222,15 @@ const CRDTCanvas: React.FC = () => {
           </div>
         ))}
       </div>
-      <div className="fixed bottom-5 left-5 z-10">
-        <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
-      </div>
-      <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-white text-black px-4 py-2 rounded z-10">
-        Time remaining: {Math.floor(remainingTime / 1000)} seconds
-      </div>
       {showDownloadButton && (
-        <div className="fixed bottom-16 right-5 z-10">
+        <div className="fixed bottom-16 right-5 z-20">
           <button onClick={downloadImage} className="bg-blue-500 text-white px-4 py-2 rounded">
             Download Image
           </button>
         </div>
       )}
       {showCubeButton && (
-        <div className="fixed bottom-5 right-5 z-10 space-x-2 flex">
+        <div className="fixed bottom-5 right-5 z-20 space-x-2 flex">
           <button onClick={() => setShowCubeView(true)} className="bg-green-500 text-white px-4 py-2 rounded">
             View Cube
           </button>
