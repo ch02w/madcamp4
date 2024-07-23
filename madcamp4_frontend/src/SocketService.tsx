@@ -35,7 +35,7 @@ class SocketService {
     this.socket.off(event);
   }
 
-  emit(event: string, data: any) {
+  emit(event: string, data: any = "") {
     console.log(`Emitting event: ${event}`, data);
     this.socket.emit(event, data);
   }
