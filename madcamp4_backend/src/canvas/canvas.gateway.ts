@@ -10,7 +10,7 @@ import { Server, Socket } from 'socket.io';
 import * as THREE from 'three';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { createCanvas, Canvas } from 'canvas';
+import { createCanvas } from 'canvas';
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -172,9 +172,9 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async generateGLB() {
-    const { GLTFExporter } = await (eval(`import('three/examples/jsm/exporters/GLTFExporter.js')`) as Promise<
-      typeof import('three/examples/jsm/exporters/GLTFExporter')
-    >);
+    const { GLTFExporter } = await (eval(`import(
+      'three/examples/jsm/exporters/GLTFExporter.js'
+    )`) as Promise<typeof import('three/examples/jsm/exporters/GLTFExporter')>);
   
     const scene = new THREE.Scene();
     const materialArray = this.canvasStates.map((canvasState) => {
