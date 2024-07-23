@@ -37,6 +37,7 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('addNote')
   handleAddNote(@MessageBody() noteData: { note: number; time: number }): void {
+    console.log('Add Note');
     const { note, time } = noteData;
     const noteIndex = this.notes.findIndex(n => n.time === time);
 

@@ -8,9 +8,16 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import * as THREE from 'three';
-import { writeFileSync } from 'fs';
-import { join } from 'path';
-import { createCanvas } from 'canvas';
+import * as fs from 'fs';
+import * as path from 'path';
+import { createCanvas, Canvas as NodeCanvas } from 'canvas';
+import { Blob, FileReader } from 'vblob';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+
+global.window = global as any;
+global.Blob = Blob;
+global.FileReader = FileReader;
+global.THREE = THREE;
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -20,6 +27,16 @@ interface CanvasOperation {
   type: 'draw' | 'clear';
   payload: any;
 }
+
+const mockDocument = {
+  createElement: (nodeName: string) => {
+    if (nodeName !== 'canvas') throw new Error(`Cannot create node ${nodeName}`);
+    const canvas: HTMLCanvasElement = createCanvas(256, 256) as unknown as HTMLCanvasElement;
+    return canvas;
+  },
+} as unknown as Document;
+
+global.document = mockDocument;
 
 @WebSocketGateway({
   cors: {
@@ -108,6 +125,10 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
       colors: [],
       data: this.canvasStates,
     });
+    this.server.emit('canvasState', {
+      colors: [],
+      data: this.canvasStates,
+    });
     console.log('Cleared canvas');
   }
 
@@ -172,10 +193,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async generateGLB() {
-    const { GLTFExporter } = await (eval(`import(
-      'three/examples/jsm/exporters/GLTFExporter.js'
-    )`) as Promise<typeof import('three/examples/jsm/exporters/GLTFExporter')>);
-  
     const scene = new THREE.Scene();
     const materialArray = this.canvasStates.map((canvasState) => {
       const canvas = createCanvas(200, 200);
@@ -189,10 +206,10 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
           ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
         });
       }
-      const texture = new THREE.CanvasTexture(canvas as unknown as HTMLCanvasElement);
+      const texture = new THREE.CanvasTexture(canvas as any);
       return new THREE.MeshBasicMaterial({ map: texture });
     });
-  
+
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const materials = [
       materialArray[0], // Right (x+)
@@ -204,23 +221,22 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     ];
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
-  
+
     const exporter = new GLTFExporter();
     exporter.parse(
       scene,
       (result) => {
         if (result instanceof ArrayBuffer) {
-          // Convert ArrayBuffer to Buffer
           const output = Buffer.from(result);
-          const filePath = join(__dirname, '..', 'public', 'canvas.glb');
-          writeFileSync(filePath, output);
+          const filePath = path.join(__dirname, '..', 'public', 'canvas.glb');
+          fs.writeFileSync(filePath, output);
           this.server.emit('glbGenerated', { url: `http://localhost:3001/public/canvas.glb` });
         } else {
           console.error('Unexpected result format from GLTFExporter');
         }
       },
       (error) => console.error('An error occurred during parsing', error),
-      { binary: true } // Ensure binary format for GLB
+      { binary: true }
     );
-  }  
+  }
 }
