@@ -11,23 +11,12 @@ interface CRDTCanvasProps {
 }
 
 const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
-  const [canvasStates, setCanvasStates] = useState<CanvasState[]>([{},{},{},{},{},{}]);
+  const [canvasStates, setCanvasStates] = useState<CanvasState[]>(Array(6).fill({}));
   const [canDraw, setCanDraw] = useState(true);
   const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
   const canvasRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
 
   useEffect(() => {
-    const initialCanvasStates = Array(6).fill(null).map(() => {
-      const state: CanvasState = {};
-      for (let x = 0; x < 200; x += 10) {
-        for (let y = 0; y < 200; y += 10) {
-          state[`pixel-${x}-${y}`] = { value: 0xFFFFFF, timestamp: Date.now() }; // Initial color is white
-        }
-      }
-      return state;
-    });
-    setCanvasStates(initialCanvasStates);
-
     socketService.on('canvasState', (state: { colors: string[], data: CanvasState[] }) => {
       console.log('Received canvas state:', state);
       setCanvasStates(state.data);
@@ -49,12 +38,12 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
     if (!canDraw) {
       setFilterStyle({
         backgroundColor: 'rgba(0, 255, 0, 0.5)',
-        transition: 'background-color 1s'
+        transition: 'background-color 1s',
       });
       const timeoutId = setTimeout(() => {
         setFilterStyle({
           backgroundColor: 'transparent',
-          transition: 'background-color 1s'
+          transition: 'background-color 1s',
         });
         setCanDraw(true);
       }, 1000);
@@ -63,11 +52,10 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
     }
   }, [canDraw]);
 
-  const updateCanvas = (canvasIndex: number, x: number, y: number, value: string) => {
-    const colorValue = parseInt(value.replace('#', ''), 16); // Convert hex color to number
+  const updateCanvas = (canvasIndex: number, x: number, y: number, value: number) => {
     const key = `pixel-${x}-${y}`;
     const timestamp = Date.now();
-    const payload = { canvasIndex, key, value: colorValue, timestamp };
+    const payload = { canvasIndex, key, value, timestamp };
     console.log('Emitting updateCanvas event:', payload);
     socketService.emit('canvasOperation', { type: 'draw', payload });
   };
@@ -79,7 +67,7 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
     const borderWidth = 1;
     const x = Math.floor((event.clientX - rect.left - borderWidth) / 10) * 10;
     const y = Math.floor((event.clientY - rect.top - borderWidth) / 10) * 10;
-    updateCanvas(canvasIndex, x, y, selectedColor);
+    updateCanvas(canvasIndex, x, y, parseInt(selectedColor.replace('#', ''), 16));
 
     setCanDraw(false);
   };
@@ -97,8 +85,8 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
     setCanvasStates(initialCanvasStates);
   };
 
-  const getBackgroundStyle = (canvasIndex: number) => {
-    const canvasImage = Object.entries(canvasStates[canvasIndex]).map(([key, { value }]) => {
+  const getCanvasContent = (canvasIndex: number) => {
+    return Object.entries(canvasStates[canvasIndex]).map(([key, { value }]) => {
       const [_, x, y] = key.split('-');
       const hexValue = `#${value.toString(16).padStart(6, '0')}`; // Convert number to hex color
       return (
@@ -115,19 +103,10 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
         ></div>
       );
     });
-
-    return (
-      <div className="absolute inset-0">
-        {canvasImage}
-      </div>
-    );
   };
 
   return (
     <div className="relative w-full h-auto mt-4">
-      <div className="absolute inset-0" style={{ ...filterStyle, transform: 'scale(1.5)', filter: 'blur(10px)', zIndex: -1 }}>
-        {canvasStates.map((_, index) => getBackgroundStyle(index))}
-      </div>
       <div className="relative w-[800px] h-[600px] mx-auto grid grid-cols-4 grid-rows-3 gap-0">
         {canvasStates.map((_, index) => (
           <div
@@ -140,24 +119,9 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
                 ${index === 5 ? 'row-start-2 row-end-3 col-start-4 col-end-5' : ''} 
                 ${index === 3 ? 'row-start-3 row-end-4 col-start-2 col-end-3' : ''}`}
             onClick={(e) => handleCanvasClick(index, e)}
+            style={filterStyle}
           >
-            {Object.entries(canvasStates[index]).map(([key, { value }]) => {
-              const [_, x, y] = key.split('-');
-              const hexValue = `#${value.toString(16).padStart(6, '0')}`; // Convert number to hex color
-              return (
-                <div
-                  key={key}
-                  className="absolute"
-                  style={{
-                    left: `${x}px`,
-                    top: `${y}px`,
-                    width: '10px',
-                    height: '10px',
-                    backgroundColor: hexValue,
-                  }}
-                ></div>
-              );
-            })}
+            {getCanvasContent(index)}
           </div>
         ))}
       </div>
