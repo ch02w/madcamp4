@@ -10,7 +10,7 @@ import { Server, Socket } from 'socket.io';
 import * as THREE from 'three';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { createCanvas, Canvas } from 'canvas';
+import { createCanvas } from 'canvas';
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -152,7 +152,7 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     setTimeout(() => {
-      if (this.isDrawingActive()) {
+      if (!this.isDrawingActive()) {
         this.handleDrawingEnd();
       } else {
         this.handleBreakEnd();
@@ -172,10 +172,10 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async generateGLB() {
-    const { GLTFExporter } = await (eval(`import('three/examples/jsm/exporters/GLTFExporter.js')`) as Promise<
-      typeof import('three/examples/jsm/exporters/GLTFExporter')
-    >);
-
+    const { GLTFExporter } = await (eval(`import(
+      'three/examples/jsm/exporters/GLTFExporter.js'
+    )`) as Promise<typeof import('three/examples/jsm/exporters/GLTFExporter')>);
+  
     const scene = new THREE.Scene();
     const materialArray = this.canvasStates.map((canvasState) => {
       const canvas = createCanvas(200, 200);
@@ -192,29 +192,35 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const texture = new THREE.CanvasTexture(canvas as unknown as HTMLCanvasElement);
       return new THREE.MeshBasicMaterial({ map: texture });
     });
-
+  
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const materials = [
-      materialArray[4], // Front (z+)
-      materialArray[1], // Back (z-)
-      materialArray[3], // Top (y+)
-      materialArray[5], // Bottom (y-)
-      materialArray[2], // Left (x-)
       materialArray[0], // Right (x+)
+      materialArray[1], // Left (x-)
+      materialArray[2], // Top (y+)
+      materialArray[3], // Bottom (y-)
+      materialArray[4], // Front (z+)
+      materialArray[5], // Back (z-)
     ];
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
-
+  
     const exporter = new GLTFExporter();
     exporter.parse(
       scene,
       (result) => {
-        const output = JSON.stringify(result, null, 2);
-        const filePath = join(__dirname, '..', 'public', 'canvas.glb');
-        writeFileSync(filePath, output);
-        this.server.emit('glbGenerated', { url: `http://localhost:3001/public/canvas.glb` });
+        if (result instanceof ArrayBuffer) {
+          // Convert ArrayBuffer to Buffer
+          const output = Buffer.from(result);
+          const filePath = join(__dirname, '..', 'public', 'canvas.glb');
+          writeFileSync(filePath, output);
+          this.server.emit('glbGenerated', { url: `http://localhost:3001/public/canvas.glb` });
+        } else {
+          console.error('Unexpected result format from GLTFExporter');
+        }
       },
-      (error) => console.error('An error occurred during parsing', error)
+      (error) => console.error('An error occurred during parsing', error),
+      { binary: true } // Ensure binary format for GLB
     );
-  }
+  }  
 }

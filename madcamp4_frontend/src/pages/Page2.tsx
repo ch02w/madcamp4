@@ -4,13 +4,17 @@ import socketService from '../SocketService';
 import { SketchPicker, ColorResult } from 'react-color';
 import ThreeView from '../components/ThreeView';
 
+interface CanvasState {
+  [key: string]: { value: number; timestamp: number };
+}
+
 const Page2: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [pause, setPause] = useState<boolean>(false);
   const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({});
   const [selectedColor, setSelectedColor] = useState<string>('black');
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
-  const [canvasStates, setCanvasStates] = useState<any[]>([{},{},{},{},{},{}]);
+  const [canvasStates, setCanvasStates] = useState<CanvasState[]>(Array(6).fill({}));
 
   useEffect(() => {
     socketService.on('remainingTime', (time: number) => {
@@ -18,7 +22,7 @@ const Page2: React.FC = () => {
       setPause(time <= 30000);
     });
 
-    socketService.on('canvasState', (state: { colors: string[], data: any[] }) => {
+    socketService.on('canvasState', (state: { colors: string[], data: CanvasState[] }) => {
       setCanvasStates(state.data);
     });
 

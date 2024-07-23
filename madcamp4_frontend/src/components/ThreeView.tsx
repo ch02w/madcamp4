@@ -8,13 +8,51 @@ interface CanvasState {
 
 const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [cameraState, setCameraState] = useState<{
-    position: THREE.Vector3;
-    rotation: THREE.Euler;
-  }>({
-    position: new THREE.Vector3(0, 0, 2),
-    rotation: new THREE.Euler(0, 0, 0),
-  });
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+
+  const saveCameraState = () => {
+    if (!cameraRef.current || !controlsRef.current) return;
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+
+    localStorage.setItem("camera.position.x", camera.position.x.toString());
+    localStorage.setItem("camera.position.y", camera.position.y.toString());
+    localStorage.setItem("camera.position.z", camera.position.z.toString());
+    localStorage.setItem("camera.rotation.x", camera.rotation.x.toString());
+    localStorage.setItem("camera.rotation.y", camera.rotation.y.toString());
+    localStorage.setItem("camera.rotation.z", camera.rotation.z.toString());
+    localStorage.setItem("camera.zoom", camera.zoom.toString());
+    localStorage.setItem("controls.target.x", controls.target.x.toString());
+    localStorage.setItem("controls.target.y", controls.target.y.toString());
+    localStorage.setItem("controls.target.z", controls.target.z.toString());
+  };
+
+  const loadCameraState = () => {
+    if (!cameraRef.current || !controlsRef.current) return;
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+
+    const positionX = parseFloat(localStorage.getItem("camera.position.x") || '0');
+    const positionY = parseFloat(localStorage.getItem("camera.position.y") || '0');
+    const positionZ = parseFloat(localStorage.getItem("camera.position.z") || '2');
+    const rotationX = parseFloat(localStorage.getItem("camera.rotation.x") || '0');
+    const rotationY = parseFloat(localStorage.getItem("camera.rotation.y") || '0');
+    const rotationZ = parseFloat(localStorage.getItem("camera.rotation.z") || '0');
+    const zoom = parseFloat(localStorage.getItem("camera.zoom") || '1');
+
+    const targetX = parseFloat(localStorage.getItem("controls.target.x") || '0');
+    const targetY = parseFloat(localStorage.getItem("controls.target.y") || '0');
+    const targetZ = parseFloat(localStorage.getItem("controls.target.z") || '0');
+
+    camera.position.set(positionX, positionY, positionZ);
+    camera.rotation.set(rotationX, rotationY, rotationZ);
+    camera.zoom = zoom;
+    camera.updateProjectionMatrix();
+
+    controls.target.set(targetX, targetY, targetZ);
+    controls.update();
+  };
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -22,8 +60,7 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-    camera.position.copy(cameraState.position);
-    camera.rotation.copy(cameraState.rotation);
+    cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -34,6 +71,9 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
     controls.dampingFactor = 0.05;
     controls.screenSpacePanning = false;
     controls.maxPolarAngle = Math.PI;
+    controlsRef.current = controls;
+
+    loadCameraState();
 
     const materialArray = canvasStates.map((canvasState) => {
       const canvas = document.createElement('canvas');
@@ -74,15 +114,12 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
     animate();
 
     return () => {
-      setCameraState({
-        position: camera.position.clone(),
-        rotation: camera.rotation.clone(),
-      });
+      saveCameraState();
       mount.removeChild(renderer.domElement);
     };
   }, [canvasStates]);
 
-  return <div ref={mountRef} style={{ width: '600px', height: '400px' }} />;
+  return <div ref={mountRef} style={{ width: '800px', height: '800px' }} />;
 };
 
 export default ThreeView;
