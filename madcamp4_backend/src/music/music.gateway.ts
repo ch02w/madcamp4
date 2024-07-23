@@ -24,7 +24,6 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
       note: -1,
       time: index,
     }));
-    console.log(this.notes);
   }
 
   handleConnection(client: Socket) {
