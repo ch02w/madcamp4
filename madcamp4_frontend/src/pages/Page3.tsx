@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socketService from '../SocketService';
 import Vex from 'vexflow';
-import { render } from '@testing-library/react';
+import * as Tone from 'tone';
 
 const MusicSheetPage: React.FC = () => {
   const [notes, setNotes] = useState<{note: number, time: number}[]>(Array.from({ length: 64 }, (_, index) => ({ note: -1, time: index + 1 })));
   const vexRef = useRef<HTMLDivElement>(null);
-  const noteMap = ['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5'];
+  const noteMap = ['d#/5', 'd/5', 'c#/5', 'c/5', 'b/4', 'a#/4', 'a/4', 'g#/4', 'g/4', 'f#/4', 'f/4', 'e/4', 'd#/4', 'd/4', 'c#/4', 'c/4'];
+  const toneMap = ['D#5', 'D5', 'C#5', 'C5', 'B4', 'A#4', 'A4', 'G#4', 'G4', 'F#4', 'F4', 'E4', 'D#4', 'D4', 'C#4', 'C4'];
 
   useEffect(() => {
     renderSheetMusic(notes);
@@ -30,7 +31,7 @@ const MusicSheetPage: React.FC = () => {
   };
 
   const renderSheetMusic = (notes : { note: number; time: number }[]) => {
-    const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
+    const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Modifier } = Vex.Flow;
   
     const div = vexRef.current!;
     div.innerHTML = '';
@@ -40,25 +41,23 @@ const MusicSheetPage: React.FC = () => {
       return renderer.getContext();
     }
 
-    const context1 = createRenderer(1000, 200);
-    const context2 = createRenderer(1000, 200);
-    const context3 = createRenderer(1000, 200);
-    const context4 = createRenderer(1000, 200);
+    const context1 = createRenderer(2000, 140);
+    const context2 = createRenderer(2000, 140);
 
     const staveWidth = 800;
 
-    const stave1 = new Stave(0, 40, staveWidth);
-    const stave2 = new Stave(0, 40, staveWidth);
-    const stave3 = new Stave(0, 40, staveWidth);
-    const stave4 = new Stave(0, 40, staveWidth);
+    const stave1 = new Stave(10, 40, staveWidth);
+    const stave2 = new Stave(810, 40, staveWidth);
+    const stave3 = new Stave(10, 40, staveWidth);
+    const stave4 = new Stave(810, 40, staveWidth);
   
     stave1.addClef("treble").addTimeSignature("4/4");
     stave1.setContext(context1).draw();
-    stave2.setContext(context2).draw();
-    stave3.setContext(context3).draw();
-    stave4.setContext(context4).draw();
+    stave2.setContext(context1).draw();
+    stave3.addClef("treble");
+    stave3.setContext(context2).draw();
+    stave4.setContext(context2).draw();
   
-    // 음표 변환 함수
     const transformNotes = (notes: { note: number; time: number }[]): Vex.Flow.StaveNote[] => {
       const { StaveNote } = Vex.Flow;
     
@@ -69,11 +68,15 @@ const MusicSheetPage: React.FC = () => {
     
       const addNote = (note: { note: number; time: number }, duration: string) => {
         const noteValue = note.note === -1 ? `${duration}r` : duration;
-        transformedNotes.push(new StaveNote({
+        const newNote = new StaveNote({
           clef: 'treble',
-          keys: note.note === -1 ? ["b/4"] : [noteMap[note.note]],
+          keys: note.note === -1 ? (duration === '1' ? ["d/5"] : ["b/4"] ): [noteMap[note.note]],
           duration: noteValue
-        }));
+        });
+        if (note.note !== -1 && noteMap[note.note].includes('#')) {
+          newNote.addModifier(new Accidental("#")) as unknown as typeof StaveNote;
+        }
+        transformedNotes.push(newNote);
       };
     
       for (let i = 0; i < notes.length; i++) {
@@ -122,7 +125,6 @@ const MusicSheetPage: React.FC = () => {
         }
       }
 
-      // accounting for the last note
       if (count !== 0) {
         while (count >= 16) {
           const duration = "1";
@@ -159,9 +161,7 @@ const MusicSheetPage: React.FC = () => {
     
       return transformedNotes;
     };
-    
   
-    // 음표 배열 변환
     const transformedNotes = transformNotes(notes);
   
     const voice1 = new Voice({ num_beats: 4, beat_value: 4 });
@@ -169,7 +169,6 @@ const MusicSheetPage: React.FC = () => {
     const voice3 = new Voice({ num_beats: 4, beat_value: 4 });
     const voice4 = new Voice({ num_beats: 4, beat_value: 4 });
   
-    // 음표를 4개의 마디에 분배
     let time = 0;
     for (let i = 0; i < transformedNotes.length; i++) {
       const duration = transformedNotes[i].getDuration();
@@ -191,44 +190,95 @@ const MusicSheetPage: React.FC = () => {
     }
   
     const formatter = new Formatter();
-  
-    formatter.joinVoices([voice1]).format([voice1], 190);
-    formatter.joinVoices([voice2]).format([voice2], 190);
-    formatter.joinVoices([voice3]).format([voice3], 190);
-    formatter.joinVoices([voice4]).format([voice4], 190);
-  
+
+    formatter.joinVoices([voice1]).format([voice1], staveWidth);
+    formatter.joinVoices([voice2]).format([voice2], staveWidth);
+    formatter.joinVoices([voice3]).format([voice3], staveWidth);
+    formatter.joinVoices([voice4]).format([voice4], staveWidth);
+
+    const centerAlignSingleNote = (voice: Vex.Flow.Voice, stave: Vex.Flow.Stave) => {
+      const tickables = voice.getTickables();
+      if (tickables.length === 1) {
+        const singleNote = tickables[0] as Vex.Flow.StaveNote;
+        const centerX = staveWidth / 2;
+        const noteX = singleNote.getAbsoluteX();
+        const shiftX = centerX - noteX;
+        singleNote.setXShift(shiftX);
+      }
+    };
+
+    centerAlignSingleNote(voice1, stave1);
+    centerAlignSingleNote(voice2, stave2);
+    centerAlignSingleNote(voice3, stave3);
+    centerAlignSingleNote(voice4, stave4);
+
     voice1.draw(context1, stave1);
-    voice2.draw(context2, stave2);
-    voice3.draw(context3, stave3);
-    voice4.draw(context4, stave4);
+    voice2.draw(context1, stave2);
+    voice3.draw(context2, stave3);
+    voice4.draw(context2, stave4);
   };
   
-  
-
   const handleCellClick = (row: number, col: number) => {
-    const time = col; // 각 열이 16분음표 시간을 나타냅니다.
+    const time = col;
     addNote(row, time);
+  };
+
+
+  const exportToWAV = async () => {
+    const synth = new Tone.Synth().toDestination();
+    const now = Tone.now();
+
+    notes.forEach((note, index) => {
+      if (note.note !== -1) {
+        const noteName = toneMap[note.note];
+        const time = index*0.25;
+        synth.triggerAttackRelease(noteName, '16n', now + time);
+      }
+    });
+
+    await Tone.start();
+    const recorder = new Tone.Recorder();
+    synth.connect(recorder);
+    recorder.start();
+
+    setTimeout(async () => {
+      const recording = await recorder.stop();
+      const url = URL.createObjectURL(recording);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'music.wav';
+      a.click();
+    }, notes.length * 250);
   };
 
   return (
     <div className="p-4" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div className="mt-4" style={{ width: '90%', display: 'grid', gridTemplateColumns: 'repeat(64, 1fr)', gap: '0' }}>
-        {Array.from({ length: 8 }).map((_, row) =>
-          Array.from({ length: 64 }).map((_, col) => (
-            <button
-              key={`${row}-${col}`}
-              className="border border-gray-300"
-              onClick={() => handleCellClick(row, col)}
-              style={{
-                backgroundColor: notes.some(note => noteMap[note.note] === ['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5'][row] && note.time === col) ? 'black' : 'white',
-                width: '100%',
-                height: '0',
-                paddingBottom: '100%'
-              }}
-            >
-            </button>
-          ))
-        )}
+      <div className="mt-4" style={{ width: '90%', display: 'flex' }}>
+        <div className="piano" style={{ width: '10%', display: 'grid', gridTemplateRows: 'repeat(16, 1fr)', gap: '0' }}>
+          {['D#5', 'D5', 'C#5', 'C5', 'B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'].map((note, index) => (
+            <div key={index} style={{ height: '100%', backgroundColor: ['C#', 'D#', 'F#', 'G#', 'A#', 'C#5', 'D#5'].includes(note) ? 'black' : 'white', color: ['C#', 'D#', 'F#', 'G#', 'A#', 'C#5', 'D#5'].includes(note) ? 'white' : 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {note}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4" style={{ width: '90%', display: 'grid', gridTemplateColumns: 'repeat(64, 1fr)', gap: '0' }}>
+          {Array.from({ length: 16 }).map((_, row) =>
+            Array.from({ length: 64 }).map((_, col) => (
+              <button
+                key={`${row}-${col}`}
+                className="border border-gray-300"
+                onClick={() => handleCellClick(row, col)}
+                style={{
+                  backgroundColor: notes.some(note => noteMap[note.note] === noteMap[row] && note.time === col) ? 'black' : 'white',
+                  width: '100%',
+                  height: '0',
+                  paddingBottom: '100%'
+                }}
+              >
+              </button>
+            ))
+          )}
+        </div>
       </div>
       <div className="mt-4" style={{ width: '90%' }}>
         <div ref={vexRef}/>
@@ -238,6 +288,12 @@ const MusicSheetPage: React.FC = () => {
         className="bg-red-500 text-white py-2 px-4 rounded mt-4"
       >
         Clear
+      </button>
+      <button 
+        onClick={exportToWAV} 
+        className="bg-green-500 text-white py-2 px-4 rounded mt-4"
+      >
+        Export to WAV
       </button>
     </div>
   );
