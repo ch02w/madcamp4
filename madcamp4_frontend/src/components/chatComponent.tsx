@@ -6,7 +6,7 @@ const ChatComponent: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ sender: string; message: string }[]>([]);
   const [input, setInput] = useState('');
-  const [sender, setSender] = useState(`User${Math.floor(Math.random() * 1000)}`); // 익명 사용자 이름 생성
+  const [sender, setSender] = useState(`익명${Math.floor(Math.random() * 1000)}`); // 익명 사용자 이름 생성
   const [header, setHeader] = useState('1분반 화이팅!');
   const [headerInput, setHeaderInput] = useState(header);
   const messagesEndRef = useRef<HTMLDivElement>(null);
