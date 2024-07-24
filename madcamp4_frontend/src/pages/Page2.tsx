@@ -18,6 +18,7 @@ interface CRDTCanvasProps {
   pause: boolean;
   selectedColor: string;
   onCanvasClick: () => void;
+  onCanvasUpdate: (canvasStates: CanvasState[]) => void; // Add this callback to update the canvas state
 }
 
 const Page2: React.FC = () => {
@@ -44,16 +45,7 @@ const Page2: React.FC = () => {
     });
 
     socketService.on('clearCanvas', () => {
-      setBackgroundStyle({
-        backgroundColor: 'rgba(0, 125, 0, 0.5)',
-        transition: 'background-color 1s'
-      });
-      setTimeout(() => {
-        setBackgroundStyle({
-          backgroundColor: 'transparent',
-          transition: 'background-color 1s'
-        });
-      }, 1000);
+      setCanvasStates(Array(6).fill({})); // Clear the canvas states
     });
 
     return () => {
@@ -136,6 +128,10 @@ const Page2: React.FC = () => {
   const handleCanvasClick = () => {
   };
 
+  const handleCanvasUpdate = (updatedCanvasStates: CanvasState[]) => {
+    setCanvasStates(updatedCanvasStates);
+  };
+
   const handleCloseModal = () => {
     setIsMinting(false);
   };
@@ -145,7 +141,7 @@ const Page2: React.FC = () => {
       <Timer remainingTime={remainingTime} />
       <div className="content">
         <div className="canvas-wrapper" ref={canvasRef}>
-          <CRDTCanvas pause={pause} selectedColor={selectedColor} onCanvasClick={handleCanvasClick} />
+          <CRDTCanvas pause={pause} selectedColor={selectedColor} onCanvasClick={handleCanvasClick} onCanvasUpdate={handleCanvasUpdate} />
         </div>
         <div className="color-picker-wrapper">
           <button
