@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import CRDTCanvas from '../components/CRDTCanvas';
 import socketService from '../services/SocketService';
 import { SketchPicker, ColorResult } from 'react-color';
@@ -6,6 +6,8 @@ import ThreeView from '../components/ThreeView';
 import Timer from '../components/Timer';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
+import html2canvas from 'html2canvas';
+import NFTMintingModal from '../components/NFTMintingModal';
 import './Page2.css';
 
 interface CanvasState {
@@ -26,6 +28,9 @@ const Page2: React.FC = () => {
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [canvasStates, setCanvasStates] = useState<CanvasState[]>(Array(6).fill({}));
   const [showDownloadButton, setShowDownloadButton] = useState<boolean>(false);
+  const [isMinting, setIsMinting] = useState<boolean>(false);
+  const [mintingURL, setMintingURL] = useState<string>('');
+  const canvasRef = useRef<HTMLDivElement>(null);  // Reference to the canvas container
 
   useEffect(() => {
     socketService.on('remainingTime', (time: number) => {
@@ -119,6 +124,15 @@ const Page2: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const exportToPNG = async () => {
+    if (canvasRef.current) {
+      const canvas = await html2canvas(canvasRef.current);
+      const pngData = canvas.toDataURL('image/png');
+      setMintingURL(pngData);
+      setIsMinting(true);
+    }
+  };
+
   const handleCanvasClick = () => {
     setBackgroundStyle({
       backgroundColor: 'rgba(0, 255, 0, 0.5)',
@@ -133,34 +147,44 @@ const Page2: React.FC = () => {
     }, 1000);
   };
 
+  const handleCloseModal = () => {
+    setIsMinting(false);
+  };
+
   return (
     <div className="page-container" style={{ ...backgroundStyle }}>
       <Timer remainingTime={remainingTime} />
       <div className="content">
-        <div className="canvas-wrapper">
+        <div className="canvas-wrapper" ref={canvasRef}>
           <CRDTCanvas pause={pause} selectedColor={selectedColor} onCanvasClick={handleCanvasClick} />
         </div>
+        <div className="color-picker-wrapper">
+          <button
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            className="color-picker-button"
+          >
+            {showColorPicker ? 'Hide Color Picker' : 'Show Color Picker'}
+          </button>
+          {showColorPicker && (
+            <div className="color-picker">
+              <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
+            </div>
+          )}
+          {showDownloadButton && (
+            <>
+              <button onClick={generateGLB} className="download-button">
+                Download GLB
+              </button>
+              <button onClick={exportToPNG} className="download-button">
+                Export to PNG
+              </button>
+            </>
+          )}
+        </div>
+        <NFTMintingModal isOpen={isMinting} onClose={handleCloseModal} url={mintingURL} />
         <div className="threeview-wrapper">
           <ThreeView canvasStates={canvasStates} />
         </div>
-      </div>
-      <div className="color-picker-wrapper">
-        <button
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          className="color-picker-button"
-        >
-          {showColorPicker ? 'Hide Color Picker' : 'Show Color Picker'}
-        </button>
-        {showColorPicker && (
-          <div className="color-picker">
-            <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
-          </div>
-        )}
-        {showDownloadButton && (
-          <button onClick={generateGLB} className="download-button">
-            Download GLB
-          </button>
-        )}
       </div>
     </div>
   );

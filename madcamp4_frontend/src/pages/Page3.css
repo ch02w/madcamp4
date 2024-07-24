@@ -5,43 +5,54 @@
     height: calc(100vh - 4rem);
   }
   
-  .toolbar {
-    width: 90%;
+  .content {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    margin-top: 10px;
+    position: relative;
   }
   
-  .wave-selector {
+  .canvas-wrapper {
+    margin-right: 2rem;
+  }
+  
+  .threeview-wrapper {
+    position: relative;
+    width: 600px;
+    height: 400px;
+    border: 1px solid #000;
+  }
+  
+  .color-picker-wrapper {
+    position: fixed;
+    bottom: 1.25rem;
+    left: 1.25rem;
+    z-index: 20;
     display: flex;
     align-items: center;
   }
   
-  .bpm-slider {
-    display: flex;
-    align-items: center;
-  }
-  
-  .note-grid {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(66, 1fr);
-    gap: 0;
-  }
-  
-  .actions {
-    width: 90%;
-    display: flex;
-    justify-content: space-evenly;
-    margin-top: 10px;
-    flex-shrink: 0;
-  }
-  
-  .actions button {
+  .color-picker-button {
     background-color: #007bff;
     color: white;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
   }
   
+  .color-picker {
+    position: absolute;
+    bottom: 3rem;
+    left: 1.25rem;
+  }
+  
+  .download-button {
+    background-color: #28a745;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    margin-left: 0.5rem;
+  }
+  
+  .nft-minting-modal {
+    z-index: 30;
+  }
