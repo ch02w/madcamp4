@@ -12,6 +12,12 @@ interface CanvasState {
   [key: string]: { value: number; timestamp: number };
 }
 
+interface CRDTCanvasProps {
+  pause: boolean;
+  selectedColor: string;
+  onCanvasClick: () => void; // Add this prop
+}
+
 const Page2: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [pause, setPause] = useState<boolean>(false);
@@ -113,12 +119,26 @@ const Page2: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleCanvasClick = () => {
+    setBackgroundStyle({
+      backgroundColor: 'rgba(0, 255, 0, 0.5)',
+      transition: 'background-color 1s'
+    });
+
+    setTimeout(() => {
+      setBackgroundStyle({
+        backgroundColor: 'transparent',
+        transition: 'background-color 1s'
+      });
+    }, 1000);
+  };
+
   return (
     <div className="page-container" style={{ ...backgroundStyle }}>
       <Timer remainingTime={remainingTime} />
       <div className="content">
         <div className="canvas-wrapper">
-          <CRDTCanvas pause={pause} selectedColor={selectedColor} />
+          <CRDTCanvas pause={pause} selectedColor={selectedColor} onCanvasClick={handleCanvasClick} />
         </div>
         <div className="threeview-wrapper">
           <ThreeView canvasStates={canvasStates} />
