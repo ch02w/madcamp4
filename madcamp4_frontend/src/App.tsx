@@ -6,6 +6,8 @@ import Page2 from './pages/Page2';
 import Page3 from './pages/Page3';
 import MouseParticles from 'react-mouse-particles';
 import SplashScreen from './components/SplashScreen';
+import ChatComponent from './components/chatComponent';
+import socketService from './services/SocketService';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,7 @@ const App: React.FC = () => {
           <Route path="/page2" element={<Page2 />} />
           <Route path="/page3" element={<Page3 />} />
         </Routes>
+        <ChatComponent />
       </div>
     </Router>
   );

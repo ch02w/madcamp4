@@ -26,6 +26,9 @@ const MusicSheetPage: React.FC = () => {
     socketService.emit('requestSheet');
     socketService.on('remainingTime', (time: number) => {
       setRemainingTime(time);
+      if (time <= 30000 && !pause) {
+        setPause(true);
+      }
     });
 
     renderSheetMusic(notes);
@@ -48,10 +51,6 @@ const MusicSheetPage: React.FC = () => {
       }, 1000);
     });
 
-    socketService.on('clearNotes', (newNotes: { note: number, time: number }[]) => {
-      setNotes(newNotes);
-      renderSheetMusic(newNotes);
-    });
 
     return () => {
       socketService.off('updateSheet');
