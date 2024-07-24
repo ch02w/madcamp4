@@ -5,7 +5,8 @@ import Vex from 'vexflow';
 import * as Tone from 'tone';
 import NFTMintingModal from '../components/NFTMintingModal';
 import { render } from '@testing-library/react';
-import { PiWaveSquareThin, PiWaveSineThin } from 'react-icons/pi';
+import { PiWaveSquare, PiWaveSine } from 'react-icons/pi';
+import { FaPlay, FaCoins } from 'react-icons/fa';
 
 
 const MusicSheetPage: React.FC = () => {
@@ -99,18 +100,18 @@ const MusicSheetPage: React.FC = () => {
       const renderer = new Renderer(div, Renderer.Backends.SVG);
       renderer.resize(width, height);
       const res = renderer.getContext();
-      res.setFillStyle('#9800FF');
-      res.setStrokeStyle('#9800FF');
+      res.setFillStyle('#00FF2E');
+      res.setStrokeStyle('#00FF2E');
       return res;
     }
 
     const context1 = createRenderer(screenWidth, 140);
     const context2 = createRenderer(screenWidth, 140);
 
-    const stave1 = new Stave(10, 40, staveWidth, { fill_style: '#00FF2E' });
-    const stave2 = new Stave(staveWidth + 10, 40, staveWidth); // 두 번째 스테이브는 첫 번째 스테이브 너비에 좌우 여백을 더한 위치에서 시작
-    const stave3 = new Stave(10, 40, staveWidth);
-    const stave4 = new Stave(staveWidth + 10, 40, staveWidth);
+    const stave1 = new Stave(10, 40, staveWidth, { fill_style: '#9800FF' });
+    const stave2 = new Stave(staveWidth + 10, 40, staveWidth, { fill_style: '#9800FF' });
+    const stave3 = new Stave(10, 40, staveWidth, { fill_style: '#9800FF' });
+    const stave4 = new Stave(staveWidth + 10, 40, staveWidth, { fill_style: '#9800FF' });
 
     stave1.addClef("treble").addTimeSignature("4/4");
     stave1.setContext(context1).draw();
@@ -363,21 +364,87 @@ const MusicSheetPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsDownloading(false);
   }
-
-
   return (
-    <div className="page-container" style={{ ...backgroundStyle }}>
-      <Timer remainingTime={remainingTime} />
-      <div className="toolbar" style={{
-        width: '90%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px'
-      }}>
-        <button 
-          onClick={handleWaveChange} 
-          style={{ padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          className="bg-gray-200 hover:bg-gray-300 rounded"
-        >
-          {wave === 'sine' ? <PiWaveSineThin /> : <PiWaveSquareThin />}
-        </button>
+    <div
+      className="p-4"
+      style={{
+        height: '100vh',
+        width: '100vw',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        background: 'linear-gradient(to right bottom, #000000, #30034A)',
+        ...backgroundStyle,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}
+      >
+        <Timer remainingTime={remainingTime} />
+      </div>
+      <div
+        className="toolbar"
+        style={{
+          width: '90%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '50px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={handleWaveChange}
+            style={{
+              padding: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: '10px',
+              backgroundColor: 'transparent',
+            }}
+            className="bg-gray-200 hover:bg-gray-300 rounded"
+          >
+            {wave === 'sine' ? (
+              <PiWaveSine size={30} color="white" />
+            ) : (
+              <PiWaveSquare size={30} color="white" />
+            )}
+          </button>
+          <button
+            onClick={playWAV}
+            style={{
+              padding: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'transparent',
+            }}
+            className="bg-black text-white rounded"
+          >
+            <FaPlay size={24}/>
+          </button>
+            {pause && (
+              <button
+              onClick={playWAV}
+              style={{
+                padding: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'transparent',
+              }}
+              className="bg-black text-white rounded"
+            >
+                <FaCoins size={24} />
+              </button>
+            )}
+        </div>
         <div className="bpm-slider" style={{ display: 'flex', alignItems: 'center' }}>
           <label style={{ marginRight: '10px' }}>BPM:</label>
           <input type="range" min="30" max="99" onChange={handleBPMChange} style={{ width: '200px' }} />
@@ -427,16 +494,6 @@ const MusicSheetPage: React.FC = () => {
       </div>
       <div className="mt-4" style={{ width: '90%' }}>
         <div ref={vexRef} />
-      </div>
-      <div className="actions w-11/12 flex justify-start mt-2 flex-shrink-0">
-        <button onClick={playWAV} className="bg-blue-500 text-white py-2 px-4 rounded mt-4 ml-4">
-          Play WAV
-        </button>
-        {pause && (
-          <button onClick={exportToPNG} className="bg-blue-500 text-white py-2 px-4 rounded mt-4 ml-4">
-            Export to PNG
-          </button>
-        )}
       </div>
       <NFTMintingModal isOpen={isDownloading} onClose={handleCloseModal} url={downloadURL} />
     </div>
