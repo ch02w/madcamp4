@@ -366,7 +366,7 @@ const MusicSheetPage: React.FC = () => {
 
 
   return (
-    <div className="p-4" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', ...backgroundStyle }}>
+    <div className="page-container" style={{ ...backgroundStyle }}>
       <Timer remainingTime={remainingTime} />
       <div className="toolbar" style={{
         width: '90%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px'

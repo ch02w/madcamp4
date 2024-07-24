@@ -1,5 +1,3 @@
-
-// ThreeView.tsx
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -138,7 +136,7 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
         mountRef.current.removeChild(rendererRef.current.domElement);
       }
     };
-  }, [canvasStates]);
+  }, [canvasStates]); // Add canvasStates as a dependency to re-render when it changes
 
   return <div ref={mountRef} className="threeview-container" />;
 };

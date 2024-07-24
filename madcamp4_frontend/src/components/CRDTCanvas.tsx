@@ -9,12 +9,14 @@ interface CRDTCanvasProps {
   pause: boolean;
   selectedColor: string;
   onCanvasClick: () => void; // Callback function to notify parent of a click
+  onCanvasUpdate: (canvasStates: CanvasState[]) => void; // Callback function to notify parent of canvas state update
 }
 
-const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasClick }) => {
+const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasClick, onCanvasUpdate }) => {
   const [canvasStates, setCanvasStates] = useState<CanvasState[]>(Array(6).fill({}));
   const [canDraw, setCanDraw] = useState(true);
-  const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
+  const [showLoadingCursor, setShowLoadingCursor] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const canvasRefs = [
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
@@ -30,11 +32,13 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
     socketService.on('canvasState', (state: { colors: string[]; data: CanvasState[] }) => {
       console.log('Received canvas state:', state);
       setCanvasStates(state.data);
+      onCanvasUpdate(state.data); // Notify parent of the new canvas state
     });
 
     socketService.on('initialCanvasState', (state: { colors: string[]; data: CanvasState[] }) => {
       console.log('Received initial canvas state:', state);
       setCanvasStates(state.data);
+      onCanvasUpdate(state.data); // Notify parent of the initial canvas state
     });
 
     socketService.on('clearCanvas', () => {
@@ -52,16 +56,9 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
 
   useEffect(() => {
     if (!canDraw) {
-      // setFilterStyle({
-      //   backgroundColor: 'rgba(0, 255, 0, 0.5)',
-      //   transition: 'background-color 1s',
-      // });
       const timeoutId = setTimeout(() => {
-        // setFilterStyle({
-        //   backgroundColor: 'rgba(0, 0, 0, 1)',
-        //   transition: 'background-color 1s',
-        // });
         setCanDraw(true);
+        setShowLoadingCursor(false); // Hide custom cursor after 1 second
       }, 1000);
 
       return () => clearTimeout(timeoutId);
@@ -86,6 +83,7 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
     updateCanvas(canvasIndex, x, y, parseInt(selectedColor.replace('#', ''), 16));
 
     setCanDraw(false);
+    setShowLoadingCursor(true); // Show custom cursor on click
     onCanvasClick(); // Notify parent of the click event
   };
 
@@ -100,6 +98,7 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
       return state;
     });
     setCanvasStates(initialCanvasStates);
+    onCanvasUpdate(initialCanvasStates); // Notify parent of the cleared canvas state
   };
 
   const getCanvasContent = (canvasIndex: number) => {
@@ -122,9 +121,13 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
     });
   };
 
+  const handleMouseMove = (event: React.MouseEvent) => {
+    setCursorPosition({ x: event.clientX, y: event.clientY });
+  };
+
   return (
-    <div className="relative w-full h-auto mt-4">
-      <div className="relative w-[800px] h-[600px] mx-auto grid grid-cols-4 grid-rows-3 gap-0">
+    <div className="relative w-full h-auto mt-4" onMouseMove={handleMouseMove}>
+      <div className="relative w-[800px] h-[600px] mx-auto grid grid-cols-4 grid-rows-3 gap-0" style={{ cursor: showLoadingCursor ? 'none' : 'default' }}>
         {canvasStates.map((_, index) => (
           <div
             key={index}
@@ -138,7 +141,6 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
                 ${index === 5 ? 'row-start-2 row-end-3 col-start-4 col-end-5' : ''} 
                 ${index === 3 ? 'row-start-3 row-end-4 col-start-2 col-end-3' : ''}`}
             onClick={(e) => handleCanvasClick(index, e)}
-            style={filterStyle}
           >
             {getCanvasContent(index)}
           </div>
