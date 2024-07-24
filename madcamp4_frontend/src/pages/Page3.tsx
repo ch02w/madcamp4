@@ -10,7 +10,7 @@ const MusicSheetPage: React.FC = () => {
   const vexRef = useRef<HTMLDivElement>(null);
   const noteMap = ['d#/5', 'd/5', 'c#/5', 'c/5', 'b/4', 'a#/4', 'a/4', 'g#/4', 'g/4', 'f#/4', 'f/4', 'e/4', 'd#/4', 'd/4', 'c#/4', 'c/4'];
   const toneMap = ['D#5', 'D5', 'C#5', 'C5', 'B4', 'A#4', 'A4', 'G#4', 'G4', 'F#4', 'F4', 'E4', 'D#4', 'D4', 'C#4', 'C4'];
-  const [bpm, setBPM] = useState(120);
+  const [bpm, setBPM] = useState(60);
   const [wave, setWave] = useState('sine');
 
 
@@ -266,10 +266,11 @@ const MusicSheetPage: React.FC = () => {
     notes.forEach((note, index) => {
       if (note.note !== -1) {
         const noteName = toneMap[note.note];
-        const time = index*(1/bpm);
+        const time = index*(1-bpm*0.01);
         synth.triggerAttackRelease(noteName, '16n', now + time);
       }
     });
+
 
     await Tone.start();
     const recorder = new Tone.Recorder();
@@ -301,7 +302,7 @@ const MusicSheetPage: React.FC = () => {
         </div>
         <div className="bpm-slider" style={{ display: 'flex', alignItems: 'center' }}>
           <label style={{ marginRight: '10px' }}>BPM:</label>
-          <input type="range" min="2" max="30" onChange={handleBPMChange} style={{ width: '200px' }} />
+          <input type="range" min="30" max="99" onChange={handleBPMChange} style={{ width: '200px' }} />
         </div>
       </div>
       <div className="mt-4" style={{ width: '90%', display: 'flex' }}>
