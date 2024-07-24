@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import socketService from '../SocketService';
+import socketService from '../services/SocketService';
 import Timer from '../components/Timer';
 import Vex from 'vexflow';
 import MidiWriter from 'midi-writer-js'
