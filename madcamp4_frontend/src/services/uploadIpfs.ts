@@ -1,18 +1,14 @@
 import axios from 'axios';
-import FormData from 'form-data';
-import * as fs from 'fs';
-import * as dotenv from 'dotenv';
 
-dotenv.config();
+const JWT = process.env.REACT_APP_PINATA_JWT;
 
-const JWT = process.env.PINATA_JWT;
-
-export async function uploadIpfs(url: string) {
+export async function uploadIpfs(dataUrl: string) {
   try {
-    const formData = new FormData();
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
 
-    const file = fs.createReadStream(url);
-    formData.append('file', file);
+    const formData = new FormData();
+    formData.append('file', blob, 'sheet.png');
 
     const pinataMetadata = JSON.stringify({
       name: 'madcamp4',
@@ -34,6 +30,7 @@ export async function uploadIpfs(url: string) {
         },
       },
     );
+
     console.log(res.data);
 
     const body = {
@@ -56,6 +53,6 @@ export async function uploadIpfs(url: string) {
     console.log(res2.data);
     return res2.data.IpfsHash;
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }

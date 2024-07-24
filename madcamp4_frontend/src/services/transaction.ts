@@ -1,13 +1,10 @@
 import { ethers } from 'ethers';
-import * as dotenv from 'dotenv';
-
 export async function mintNFT(tokenURI: string, privKey: string) {
-  dotenv.config();
 
   const url = 'https://public-en-baobab.klaytn.net';
   const provider = new ethers.JsonRpcProvider(url);
   const signer = new ethers.Wallet(privKey, provider);
-  const contractAddress = process.env.CONTRACT_ADDRESS || '';
+  const contractAddress = process.env.REACT_APP_CONTRACT_ADDRESS || '';
 
   const abi = [
     {
