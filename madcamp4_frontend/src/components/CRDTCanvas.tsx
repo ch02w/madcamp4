@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import socketService from '../SocketService';
+import socketService from '../services/SocketService';
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };

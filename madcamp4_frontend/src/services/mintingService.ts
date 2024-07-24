@@ -1,10 +1,10 @@
 import { uploadIpfs } from './uploadIpfs';
 import { mintNFT } from './transaction';
 
-export async function minting() {
+export async function minting(url: string, privKey: string) {
   try {
-    const ipfsHash = await uploadIpfs();
-    await mintNFT(ipfsHash);
+    const ipfsHash = await uploadIpfs(url);
+    await mintNFT(ipfsHash, privKey);
   } catch (error) {
     console.error('Error:', error);
   }

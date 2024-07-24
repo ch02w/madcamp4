@@ -4,7 +4,6 @@ import Timer from '../components/Timer';
 import Vex from 'vexflow';
 import MidiWriter from 'midi-writer-js'
 import * as Tone from 'tone';
-import { EnumDeclaration } from 'typescript';
 
 const MusicSheetPage: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);

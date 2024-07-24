@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CRDTCanvas from '../components/CRDTCanvas';
-import socketService from '../SocketService';
+import socketService from '../services/SocketService';
 import { SketchPicker, ColorResult } from 'react-color';
 import ThreeView from '../components/ThreeView';
 import Timer from '../components/Timer';
