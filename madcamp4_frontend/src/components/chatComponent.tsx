@@ -105,8 +105,8 @@ const ChatComponent: React.FC = () => {
           zIndex: 10000,
           transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 0.3s ease, opacity 0.3s ease',
-          backgroundColor: '#2d2d2d', // 배경색을 어둡게 변경
-          color: 'white', // 텍스트 색상을 하얗게 변경
+          backgroundColor: '#2d2d2d',
+          color: 'white',
         }}
         ref={chatRef}
       >
