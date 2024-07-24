@@ -7,6 +7,8 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { TimeManager } from '../timeManager';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway()
 export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -14,9 +16,12 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private notes: { note: number; time: number }[];
+  private readonly timeManager = new TimeManager();
+  private readonly logger = new Logger(MusicGateway.name);
 
   constructor() {
     this.initializeNotes();
+    this.setupTimeManager();
   }
 
   initializeNotes() {
@@ -24,6 +29,21 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
       note: -1,
       time: index,
     }));
+  }
+
+  setupTimeManager() {
+    this.timeManager.on('operation', () => {
+      this.logger.log('Operation phase started');
+      this.server.emit('pause', false); // Resume
+      this.initializeNotes();
+      this.server.emit('clearNotes', this.notes);
+    });
+
+    this.timeManager.on('rest', () => {
+      this.logger.log('Rest phase started');
+      this.server.emit('pause', true); // Pause
+    });
+
   }
 
   handleConnection(client: Socket) {
@@ -60,9 +80,4 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('updateSheet', this.notes);
   }
 
-  @SubscribeMessage('clearNotes')
-  handleClearNotes(): void {
-    this.initializeNotes();
-    this.server.emit('updateSheet', this.notes);
-  }
 }
