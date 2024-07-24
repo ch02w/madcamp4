@@ -32,9 +32,9 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
       setCanvasStates(state.data);
     });
 
-    socketService.on('initialCanvasState', (state: CanvasState[]) => {
+    socketService.on('initialCanvasState', (state: { colors: string[]; data: CanvasState[] }) => {
       console.log('Received initial canvas state:', state);
-      setCanvasStates(state);
+      setCanvasStates(state.data);
     });
 
     socketService.on('clearCanvas', () => {
@@ -52,15 +52,15 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
 
   useEffect(() => {
     if (!canDraw) {
-      setFilterStyle({
-        backgroundColor: 'rgba(0, 255, 0, 0.5)',
-        transition: 'background-color 1s',
-      });
+      // setFilterStyle({
+      //   backgroundColor: 'rgba(0, 255, 0, 0.5)',
+      //   transition: 'background-color 1s',
+      // });
       const timeoutId = setTimeout(() => {
-        setFilterStyle({
-          backgroundColor: 'transparent',
-          transition: 'background-color 1s',
-        });
+        // setFilterStyle({
+        //   backgroundColor: 'rgba(0, 0, 0, 1)',
+        //   transition: 'background-color 1s',
+        // });
         setCanDraw(true);
       }, 1000);
 

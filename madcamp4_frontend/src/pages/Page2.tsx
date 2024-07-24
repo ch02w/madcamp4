@@ -45,12 +45,12 @@ const Page2: React.FC = () => {
 
     socketService.on('clearCanvas', () => {
       setBackgroundStyle({
-        backgroundColor: 'rgba(0, 255, 0, 0.5)',
+        backgroundColor: 'rgba(0, 125, 0, 0.5)',
         transition: 'background-color 1s'
       });
       setTimeout(() => {
         setBackgroundStyle({
-          backgroundColor: 'transparent',
+          backgroundColor: 'black',
           transition: 'background-color 1s'
         });
       }, 1000);
@@ -135,13 +135,13 @@ const Page2: React.FC = () => {
 
   const handleCanvasClick = () => {
     setBackgroundStyle({
-      backgroundColor: 'rgba(0, 255, 0, 0.5)',
+      backgroundColor: 'rgba(0, 125, 0, 0.5)',
       transition: 'background-color 1s'
     });
 
     setTimeout(() => {
       setBackgroundStyle({
-        backgroundColor: 'transparent',
+        backgroundColor: 'black',
         transition: 'background-color 1s'
       });
     }, 1000);

@@ -1,3 +1,4 @@
+
 // ThreeView.tsx
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
@@ -67,6 +68,7 @@ const ThreeView: React.FC<{ canvasStates: CanvasState[] }> = ({ canvasStates }) 
 
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setClearAlpha(0);
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
