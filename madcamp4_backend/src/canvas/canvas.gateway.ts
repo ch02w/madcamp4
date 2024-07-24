@@ -1,5 +1,12 @@
 // src/canvas/canvas.gateway.ts
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { TimeManager } from '../timeManager';
@@ -25,15 +32,17 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(CanvasGateway.name);
   private readonly timeManager = new TimeManager();
 
-  private canvasStates: CanvasState[] = Array(6).fill(null).map(() => {
-    const state: CanvasState = {};
-    for (let x = 0; x < 200; x += 10) {
-      for (let y = 0; y < 200; y += 10) {
-        state[`pixel-${x}-${y}`] = { value: 0xFFFFFF, timestamp: Date.now() }; // Initial color is white
+  private canvasStates: CanvasState[] = Array(6)
+    .fill(null)
+    .map(() => {
+      const state: CanvasState = {};
+      for (let x = 0; x < 200; x += 10) {
+        for (let y = 0; y < 200; y += 10) {
+          state[`pixel-${x}-${y}`] = { value: 0xffffff, timestamp: Date.now() }; // Initial color is white
+        }
       }
-    }
-    return state;
-  });
+      return state;
+    });
 
   constructor() {
     this.logger.log('CanvasGateway constructor called');
@@ -54,11 +63,14 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleInitialCanvasStateRequest(client: Socket) {
     client.emit('initialCanvasState', this.canvasStates);
   }
-  
+
   @SubscribeMessage('canvasOperation')
   async handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
     this.logger.log('Received canvasOperation:', operation);
-    if (this.timeManager.getCurrentState() === 'rest' && operation.type === 'draw') {
+    if (
+      this.timeManager.getCurrentState() === 'rest' &&
+      operation.type === 'draw'
+    ) {
       this.logger.log('Ignoring draw operation during rest period');
       return; // Ignore draw operations during rest
     }
@@ -88,7 +100,10 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }) {
     this.logger.log('Handling draw operation with payload:', payload);
     const { canvasIndex, key, value, timestamp } = payload;
-    if (!this.canvasStates[canvasIndex][key] || this.canvasStates[canvasIndex][key].timestamp < timestamp) {
+    if (
+      !this.canvasStates[canvasIndex][key] ||
+      this.canvasStates[canvasIndex][key].timestamp < timestamp
+    ) {
       this.canvasStates[canvasIndex][key] = { value, timestamp };
       this.server.emit('canvasState', {
         colors: [],
@@ -99,15 +114,20 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleClearOperation() {
     this.logger.log('Handling clear operation');
-    this.canvasStates = Array(6).fill(null).map(() => {
-      const state: CanvasState = {};
-      for (let x = 0; x < 200; x += 10) {
-        for (let y = 0; y < 200; y += 10) {
-          state[`pixel-${x}-${y}`] = { value: 0xFFFFFF, timestamp: Date.now() }; // Initial color is white
+    this.canvasStates = Array(6)
+      .fill(null)
+      .map(() => {
+        const state: CanvasState = {};
+        for (let x = 0; x < 200; x += 10) {
+          for (let y = 0; y < 200; y += 10) {
+            state[`pixel-${x}-${y}`] = {
+              value: 0xffffff,
+              timestamp: Date.now(),
+            }; // Initial color is white
+          }
         }
-      }
-      return state;
-    });
+        return state;
+      });
 
     this.server.emit('clearCanvas', {
       colors: [],
