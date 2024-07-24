@@ -7,28 +7,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import * as THREE from 'three';
-import * as fs from 'fs';
-import * as path from 'path';
-import { createCanvas, Canvas } from 'canvas';
-import { Blob, FileReader } from 'vblob';
 import { Logger } from '@nestjs/common';
-
-// Patch global scope to imitate browser environment.
-global.window = global as any;
-global.Blob = Blob;
-global.FileReader = FileReader;
-global.THREE = THREE;
-
-const mockDocument = {
-  createElement: (nodeName: string) => {
-    if (nodeName !== 'canvas') throw new Error(`Cannot create node ${nodeName}`);
-    const canvas: Canvas = createCanvas(256, 256) as unknown as Canvas;
-    return canvas;
-  },
-} as unknown as Document;
-
-global.document = mockDocument;
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -85,7 +64,7 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('canvasOperation')
   async handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
     this.logger.log('Received canvasOperation:', operation);
-    if (this.getRemainingTime() > this.drawInterval && operation.type === 'draw') {
+    if (this.isDrawingPaused() && operation.type === 'draw') {
       this.logger.log('Ignoring draw operation during break');
       return; // Ignore draw operations during break
     }
@@ -147,15 +126,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log('Cleared canvas');
   }
 
-  async handleDrawingEnd() {
-    this.logger.log('Drawing phase ended, generating GLB...');
-    try {
-      await this.generateGLB();
-    } catch (error) {
-      this.logger.error('Error generating GLB:', error);
-    }
-  }
-
   handleBreakEnd() {
     this.logger.log('Break phase ended, clearing canvas...');
     this.handleClearOperation();
@@ -196,10 +166,10 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.logger.log('Next event time scheduled in ms:', nextEventTime);
     setTimeout(() => {
-      if (!this.isDrawingActive()) {
-        this.handleDrawingEnd();
-      } else {
+      if (this.isDrawingActive()) {
         this.handleBreakEnd();
+      } else {
+        this.handleClearOperation();
       }
       this.scheduleNextEvent();
     }, nextEventTime);
@@ -215,58 +185,7 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return totalMilliseconds < this.drawInterval;
   }
 
-  async generateGLB() {
-    const { GLTFExporter } = await (eval(`import(
-      'three/examples/jsm/exporters/GLTFExporter.js'
-    )`) as Promise<typeof import('three/examples/jsm/exporters/GLTFExporter')>);
-
-    this.logger.log('Generating GLB file');
-    const scene = new THREE.Scene();
-    const materialArray = this.canvasStates.map((canvasState) => {
-      const canvas: Canvas = createCanvas(200, 200);
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        Object.entries(canvasState).forEach(([key, { value }]) => {
-          const [_, x, y] = key.split('-');
-          ctx.fillStyle = `#${value.toString(16).padStart(6, '0')}`;
-          ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
-        });
-      }
-      const texture = new THREE.CanvasTexture(canvas as unknown as HTMLCanvasElement);
-      return new THREE.MeshBasicMaterial({ map: texture });
-    });
-
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const materials = [
-      materialArray[0], // Right (x+)
-      materialArray[1], // Left (x-)
-      materialArray[2], // Top (y+)
-      materialArray[3], // Bottom (y-)
-      materialArray[4], // Front (z+)
-      materialArray[5], // Back (z-)
-    ];
-    const cube = new THREE.Mesh(geometry, materials);
-    scene.add(cube);
-
-    const exporter = new GLTFExporter();
-    this.logger.log('GLTFExporter instance created');
-    exporter.parse(
-      scene,
-      (result) => {
-        if (result instanceof ArrayBuffer) {
-          const output = Buffer.from(result);
-          const filePath = path.join(__dirname, '..', 'public', 'canvas.glb');
-          fs.writeFileSync(filePath, output);
-          this.logger.log('GLB file written:', filePath);
-          this.server.emit('glbGenerated', { url: `http://localhost:3001/public/canvas.glb` });
-        } else {
-          this.logger.error('Unexpected result format from GLTFExporter');
-        }
-      },
-      (error) => this.logger.error('An error occurred during parsing', error),
-      { binary: true }
-    );
+  isDrawingPaused() {
+    return this.getRemainingTime() <= this.breakInterval;
   }
 }
