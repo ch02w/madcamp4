@@ -15,7 +15,7 @@ interface CanvasState {
 interface CRDTCanvasProps {
   pause: boolean;
   selectedColor: string;
-  onCanvasClick: () => void; // Add this prop
+  onCanvasClick: () => void;
 }
 
 const Page2: React.FC = () => {

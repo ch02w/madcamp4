@@ -25,7 +25,6 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasC
   ];
 
   useEffect(() => {
-    // Request the initial canvas state when the component mounts
     socketService.emit('requestInitialCanvasState');
 
     socketService.on('canvasState', (state: { colors: string[]; data: CanvasState[] }) => {

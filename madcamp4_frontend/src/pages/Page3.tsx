@@ -7,7 +7,7 @@ import NFTMintingModal from '../components/NFTMintingModal';
 
 const MusicSheetPage: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);
-  const [notes, setNotes] = useState<{note: number, time: number}[]>(Array.from({ length: 64 }, (_, index) => ({ note: -1, time: index + 1 })));
+  const [notes, setNotes] = useState<{ note: number, time: number }[]>(Array.from({ length: 64 }, (_, index) => ({ note: -1, time: index + 1 })));
   const vexRef = useRef<HTMLDivElement>(null);
   const noteMap = ['d#/5', 'd/5', 'c#/5', 'c/5', 'b/4', 'a#/4', 'a/4', 'g#/4', 'g/4', 'f#/4', 'f/4', 'e/4', 'd#/4', 'd/4', 'c#/4', 'c/4'];
   const toneMap = ['D#5', 'D5', 'C#5', 'C5', 'B4', 'A#4', 'A4', 'G#4', 'G4', 'F#4', 'F4', 'E4', 'D#4', 'D4', 'C#4', 'C4'];
@@ -24,7 +24,7 @@ const MusicSheetPage: React.FC = () => {
     });
 
     renderSheetMusic(notes);
-    socketService.on('updateSheet', (newNotes: {note: number, time: number}[]) => {
+    socketService.on('updateSheet', (newNotes: { note: number, time: number }[]) => {
       setNotes(newNotes);
       renderSheetMusic(newNotes);
     });
@@ -35,7 +35,7 @@ const MusicSheetPage: React.FC = () => {
   }, []);
 
   const addNote = (note: number, time: number) => {
-    const newNote = {note, time};
+    const newNote = { note, time };
     socketService.emit('addNote', newNote);
   };
 
@@ -43,15 +43,15 @@ const MusicSheetPage: React.FC = () => {
     socketService.emit('clearNotes');
   };
 
-  const renderSheetMusic = (notes : { note: number; time: number }[]) => {
+  const renderSheetMusic = (notes: { note: number; time: number }[]) => {
     const { Renderer, Stave, Voice, Formatter, Accidental } = Vex.Flow;
-  
+
     const div = vexRef.current!;
     div.innerHTML = '';
     const createRenderer = (width: number, height: number) => {
       const renderer = new Renderer(div, Renderer.Backends.SVG);
       renderer.resize(width, height);
-      const res =  renderer.getContext();
+      const res = renderer.getContext();
       res.setFillStyle('#9800FF');
       res.setStrokeStyle('#9800FF');
       return res;
@@ -62,31 +62,31 @@ const MusicSheetPage: React.FC = () => {
 
     const staveWidth = 800;
 
-    const stave1 = new Stave(10, 40, staveWidth, {fill_style: '#00FF2E'});
+    const stave1 = new Stave(10, 40, staveWidth, { fill_style: '#00FF2E' });
     const stave2 = new Stave(810, 40, staveWidth);
     const stave3 = new Stave(10, 40, staveWidth);
     const stave4 = new Stave(810, 40, staveWidth);
-  
+
     stave1.addClef("treble").addTimeSignature("4/4");
     stave1.setContext(context1).draw();
     stave2.setContext(context1).draw();
     stave3.addClef("treble");
     stave3.setContext(context2).draw();
     stave4.setContext(context2).draw();
-  
+
     const transformNotes = (notes: { note: number; time: number }[]): Vex.Flow.StaveNote[] => {
       const { StaveNote } = Vex.Flow;
-    
+
       let transformedNotes: Vex.Flow.StaveNote[] = [];
       let currentNote = notes[0];
       let count = 0;
       let time = 0;
-    
+
       const addNote = (note: { note: number; time: number }, duration: string) => {
         const noteValue = note.note === -1 ? `${duration}r` : duration;
         const newNote = new StaveNote({
           clef: 'treble',
-          keys: note.note === -1 ? (duration === '1' ? ["d/5"] : ["b/4"] ): [noteMap[note.note]],
+          keys: note.note === -1 ? (duration === '1' ? ["d/5"] : ["b/4"]) : [noteMap[note.note]],
           duration: noteValue
         });
         if (note.note !== -1 && noteMap[note.note].includes('#')) {
@@ -94,9 +94,9 @@ const MusicSheetPage: React.FC = () => {
         }
         transformedNotes.push(newNote);
       };
-    
+
       for (let i = 0; i < notes.length; i++) {
-        if (count !== 0 && ((time+count) % 16 === 0 || notes[i].note !== currentNote.note)) { 
+        if (count !== 0 && ((time + count) % 16 === 0 || notes[i].note !== currentNote.note)) {
           while (count >= 16) {
             const duration = "1";
             addNote(currentNote, duration);
@@ -173,18 +173,18 @@ const MusicSheetPage: React.FC = () => {
         }
       }
 
-      console.log('total time: '+time);
-    
+      console.log('total time: ' + time);
+
       return transformedNotes;
     };
-  
+
     const transformedNotes = transformNotes(notes);
-  
+
     const voice1 = new Voice({ num_beats: 4, beat_value: 4 });
     const voice2 = new Voice({ num_beats: 4, beat_value: 4 });
     const voice3 = new Voice({ num_beats: 4, beat_value: 4 });
     const voice4 = new Voice({ num_beats: 4, beat_value: 4 });
-  
+
     let time = 0;
     for (let i = 0; i < transformedNotes.length; i++) {
       const duration = transformedNotes[i].getDuration();
@@ -205,13 +205,13 @@ const MusicSheetPage: React.FC = () => {
       }
     }
 
-  
+
     const formatter = new Formatter();
 
-    formatter.joinVoices([voice1]).format([voice1], staveWidth-100);
-    formatter.joinVoices([voice2]).format([voice2], staveWidth-100);
-    formatter.joinVoices([voice3]).format([voice3], staveWidth-100);
-    formatter.joinVoices([voice4]).format([voice4], staveWidth-100);
+    formatter.joinVoices([voice1]).format([voice1], staveWidth - 100);
+    formatter.joinVoices([voice2]).format([voice2], staveWidth - 100);
+    formatter.joinVoices([voice3]).format([voice3], staveWidth - 100);
+    formatter.joinVoices([voice4]).format([voice4], staveWidth - 100);
 
     const centerAlignSingleNote = (voice: Vex.Flow.Voice, stave: Vex.Flow.Stave) => {
       const tickables = voice.getTickables();
@@ -234,7 +234,7 @@ const MusicSheetPage: React.FC = () => {
     voice3.draw(context2, stave3);
     voice4.draw(context2, stave4);
   };
-  
+
   const handleCellClick = (row: number, col: number) => {
     const time = col;
     addNote(row, time);
@@ -242,42 +242,42 @@ const MusicSheetPage: React.FC = () => {
 
 
   const exportToPNG = async () => {
-  const svg1 = vexRef.current?.querySelector('svg:nth-of-type(1)');
-  const svg2 = vexRef.current?.querySelector('svg:nth-of-type(2)');
-  if (!svg1 || !svg2) {
-    console.error('SVG elements not found.');
-    return;
-  }
+    const svg1 = vexRef.current?.querySelector('svg:nth-of-type(1)');
+    const svg2 = vexRef.current?.querySelector('svg:nth-of-type(2)');
+    if (!svg1 || !svg2) {
+      console.error('SVG elements not found.');
+      return;
+    }
 
-  const svgData1 = new XMLSerializer().serializeToString(svg1);
-  const svgData2 = new XMLSerializer().serializeToString(svg2);
-  
-  const canvas = document.createElement('canvas');
-  const svgSize1 = svg1.getBoundingClientRect();
-  const svgSize2 = svg2.getBoundingClientRect();
-  canvas.width = Math.max(svgSize1.width, svgSize2.width);
-  canvas.height = svgSize1.height + svgSize2.height;
-  const ctx = canvas.getContext('2d');
-  
-  const img1 = new Image();
-  img1.src = `data:image/svg+xml;base64,${btoa(svgData1)}`;
-  img1.onload = () => {
-    ctx?.drawImage(img1, 0, 0);
-    const img2 = new Image();
-    img2.src = `data:image/svg+xml;base64,${btoa(svgData2)}`;
-    img2.onload = async () => {
-      ctx?.drawImage(img2, 0, svgSize1.height);
-      const pngData = canvas.toDataURL('image/png');
-      setImageURL(pngData);
-      
-      const blob = await fetch(pngData).then(res => res.blob());
-      const file = new File([blob], 'sheet.png', { type: 'image/png' });
-      const url = URL.createObjectURL(file);
-      setDownloadURL(url);
-      setIsDownloading(true);
+    const svgData1 = new XMLSerializer().serializeToString(svg1);
+    const svgData2 = new XMLSerializer().serializeToString(svg2);
+
+    const canvas = document.createElement('canvas');
+    const svgSize1 = svg1.getBoundingClientRect();
+    const svgSize2 = svg2.getBoundingClientRect();
+    canvas.width = Math.max(svgSize1.width, svgSize2.width);
+    canvas.height = svgSize1.height + svgSize2.height;
+    const ctx = canvas.getContext('2d');
+
+    const img1 = new Image();
+    img1.src = `data:image/svg+xml;base64,${btoa(svgData1)}`;
+    img1.onload = () => {
+      ctx?.drawImage(img1, 0, 0);
+      const img2 = new Image();
+      img2.src = `data:image/svg+xml;base64,${btoa(svgData2)}`;
+      img2.onload = async () => {
+        ctx?.drawImage(img2, 0, svgSize1.height);
+        const pngData = canvas.toDataURL('image/png');
+        setImageURL(pngData);
+
+        const blob = await fetch(pngData).then(res => res.blob());
+        const file = new File([blob], 'sheet.png', { type: 'image/png' });
+        const url = URL.createObjectURL(file);
+        setDownloadURL(url);
+        setIsDownloading(true);
+      };
     };
   };
-};
 
 
   const playWAV = async () => {
@@ -292,7 +292,7 @@ const MusicSheetPage: React.FC = () => {
     notes.forEach((note, index) => {
       if (note.note !== -1) {
         const noteName = toneMap[note.note];
-        const time = index*(1-bpm*0.01);
+        const time = index * (1 - bpm * 0.01);
         synth.triggerAttackRelease(noteName, '16n', now + time);
       }
     });
@@ -342,7 +342,7 @@ const MusicSheetPage: React.FC = () => {
             Array.from({ length: 66 }).map((_, col) => {
               const isPianoKey = col < 2;
               const isBlackKey = ['c#/4', 'd#/4', 'f#/4', 'g#/4', 'a#/4', 'c#/5', 'd#/5'].includes(noteMap[row]);
-              
+
               return (
                 <div
                   key={`${row}-${col}`}
@@ -360,7 +360,7 @@ const MusicSheetPage: React.FC = () => {
                     borderBottom: '1px solid gray'
                   }}
                 >
-                  {isPianoKey ? null : col !== 2 && (col-2) % 16 === 0 && (
+                  {isPianoKey ? null : col !== 2 && (col - 2) % 16 === 0 && (
                     <div
                       style={{
                         position: 'absolute',
@@ -394,7 +394,7 @@ const MusicSheetPage: React.FC = () => {
           Play WAV
         </button>
       </div>
-      <NFTMintingModal isOpen={isDownloading} onClose={handleCloseModal} url={downloadURL}/>
+      <NFTMintingModal isOpen={isDownloading} onClose={handleCloseModal} url={downloadURL} />
     </div>
   );
 };
