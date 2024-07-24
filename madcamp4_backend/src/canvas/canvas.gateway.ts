@@ -50,6 +50,11 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  @SubscribeMessage('requestInitialCanvasState')
+  handleInitialCanvasStateRequest(client: Socket) {
+    client.emit('initialCanvasState', this.canvasStates);
+  }
+  
   @SubscribeMessage('canvasOperation')
   async handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
     this.logger.log('Received canvasOperation:', operation);

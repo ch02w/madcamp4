@@ -8,18 +8,34 @@ interface CanvasState {
 interface CRDTCanvasProps {
   pause: boolean;
   selectedColor: string;
+  onCanvasClick: () => void; // Callback function to notify parent of a click
 }
 
-const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
+const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor, onCanvasClick }) => {
   const [canvasStates, setCanvasStates] = useState<CanvasState[]>(Array(6).fill({}));
   const [canDraw, setCanDraw] = useState(true);
   const [filterStyle, setFilterStyle] = useState<React.CSSProperties>({});
-  const canvasRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
+  const canvasRefs = [
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+  ];
 
   useEffect(() => {
-    socketService.on('canvasState', (state: { colors: string[], data: CanvasState[] }) => {
+    // Request the initial canvas state when the component mounts
+    socketService.emit('requestInitialCanvasState');
+
+    socketService.on('canvasState', (state: { colors: string[]; data: CanvasState[] }) => {
       console.log('Received canvas state:', state);
       setCanvasStates(state.data);
+    });
+
+    socketService.on('initialCanvasState', (state: CanvasState[]) => {
+      console.log('Received initial canvas state:', state);
+      setCanvasStates(state);
     });
 
     socketService.on('clearCanvas', () => {
@@ -30,6 +46,7 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
 
     return () => {
       socketService.off('canvasState');
+      socketService.off('initialCanvasState');
       socketService.off('clearCanvas');
     };
   }, []);
@@ -70,6 +87,7 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
     updateCanvas(canvasIndex, x, y, parseInt(selectedColor.replace('#', ''), 16));
 
     setCanDraw(false);
+    onCanvasClick(); // Notify parent of the click event
   };
 
   const clearCanvasLocally = () => {
@@ -112,7 +130,9 @@ const CRDTCanvas: React.FC<CRDTCanvasProps> = ({ pause, selectedColor }) => {
           <div
             key={index}
             ref={canvasRefs[index]}
-            className={`relative w-[202px] h-[202px] border ${index === 2 ? 'row-start-1 row-end-2 col-start-2 col-end-3' : ''} 
+            className={`relative w-[202px] h-[202px] border ${
+              index === 2 ? 'row-start-1 row-end-2 col-start-2 col-end-3' : ''
+            } 
                 ${index === 1 ? 'row-start-2 row-end-3 col-start-1 col-end-2' : ''} 
                 ${index === 4 ? 'row-start-2 row-end-3 col-start-2 col-end-3' : ''} 
                 ${index === 0 ? 'row-start-2 row-end-3 col-start-3 col-end-4' : ''} 
