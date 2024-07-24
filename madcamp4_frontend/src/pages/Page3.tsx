@@ -43,7 +43,10 @@ const MusicSheetPage: React.FC = () => {
     const createRenderer = (width: number, height: number) => {
       const renderer = new Renderer(div, Renderer.Backends.SVG);
       renderer.resize(width, height);
-      return renderer.getContext();
+      const res =  renderer.getContext();
+      res.setFillStyle('#9800FF');
+      res.setStrokeStyle('#9800FF');
+      return res;
     }
 
     const context1 = createRenderer(2000, 140);
@@ -51,7 +54,7 @@ const MusicSheetPage: React.FC = () => {
 
     const staveWidth = 800;
 
-    const stave1 = new Stave(10, 40, staveWidth);
+    const stave1 = new Stave(10, 40, staveWidth, {fill_style: '#00FF2E'});
     const stave2 = new Stave(810, 40, staveWidth);
     const stave3 = new Stave(10, 40, staveWidth);
     const stave4 = new Stave(810, 40, staveWidth);
