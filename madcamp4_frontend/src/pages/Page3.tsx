@@ -4,6 +4,7 @@ import Timer from '../components/Timer';
 import Vex from 'vexflow';
 import * as Tone from 'tone';
 import NFTMintingModal from '../components/NFTMintingModal';
+import { render } from '@testing-library/react';
 
 const MusicSheetPage: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);
@@ -16,6 +17,9 @@ const MusicSheetPage: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadURL, setDownloadURL] = useState<string>('');
   const [imageURL, setImageURL] = useState<string>('');
+  const [pause, setPause] = useState<boolean>(false);
+  const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({});
+
 
 
   useEffect(() => {
@@ -30,25 +34,56 @@ const MusicSheetPage: React.FC = () => {
       renderSheetMusic(newNotes);
     });
 
+    socketService.on('pause', (isPause: boolean) => {
+      setPause(isPause);
+      setBackgroundStyle({
+        backgroundColor: 'rgba(0, 255, 0, 0.5)',
+        transition: 'background-color 1s'
+      });
+      setTimeout(() => {
+        setBackgroundStyle({
+          backgroundColor: 'transparent',
+          transition: 'background-color 1s'
+        });
+      }, 1000);
+    });
+
+    socketService.on('clearNotes', (newNotes: { note: number, time: number }[]) => {
+      setNotes(newNotes);
+      renderSheetMusic(newNotes);
+    });
+
     return () => {
       socketService.off('updateSheet');
     };
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      renderSheetMusic(notes);
+    };
+  
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [notes]);
+
   const addNote = (note: number, time: number) => {
+    if (pause) return;
     const newNote = { note, time };
     socketService.emit('addNote', newNote);
   };
 
-  const clearNotes = () => {
-    socketService.emit('clearNotes');
-  };
 
   const renderSheetMusic = (notes: { note: number; time: number }[]) => {
     const { Renderer, Stave, Voice, Formatter, Accidental } = Vex.Flow;
 
     const div = vexRef.current!;
     div.innerHTML = '';
+    const screenWidth = window.innerWidth - 200;
+    const staveWidth = (screenWidth - 40) / 2;
+
     const createRenderer = (width: number, height: number) => {
       const renderer = new Renderer(div, Renderer.Backends.SVG);
       renderer.resize(width, height);
@@ -58,15 +93,13 @@ const MusicSheetPage: React.FC = () => {
       return res;
     }
 
-    const context1 = createRenderer(2000, 140);
-    const context2 = createRenderer(2000, 140);
-
-    const staveWidth = 800;
+    const context1 = createRenderer(screenWidth, 140);
+    const context2 = createRenderer(screenWidth, 140);
 
     const stave1 = new Stave(10, 40, staveWidth, { fill_style: '#00FF2E' });
-    const stave2 = new Stave(810, 40, staveWidth);
+    const stave2 = new Stave(staveWidth + 10, 40, staveWidth); // 두 번째 스테이브는 첫 번째 스테이브 너비에 좌우 여백을 더한 위치에서 시작
     const stave3 = new Stave(10, 40, staveWidth);
-    const stave4 = new Stave(810, 40, staveWidth);
+    const stave4 = new Stave(staveWidth + 10, 40, staveWidth);
 
     stave1.addClef("treble").addTimeSignature("4/4");
     stave1.setContext(context1).draw();
@@ -320,7 +353,7 @@ const MusicSheetPage: React.FC = () => {
 
 
   return (
-    <div className="p-4" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="p-4" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', ...backgroundStyle }}>
       <Timer remainingTime={remainingTime} />
       <div className="toolbar" style={{
         width: '90%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px'
@@ -382,18 +415,15 @@ const MusicSheetPage: React.FC = () => {
       <div className="mt-4" style={{ width: '90%' }}>
         <div ref={vexRef} />
       </div>
-      <div className="actions" style={{
-        width: '90%', display: 'flex', justifyContent: 'space-evenly', marginTop: '10px', flexShrink: '0'
-      }}>
-        <button onClick={clearNotes} className="bg-red-500 text-white py-2 px-4 rounded mt-4">
-          Clear
-        </button>
-        <button onClick={exportToPNG} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
-          Export to PNG
-        </button>
-        <button onClick={playWAV} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
+      <div className="actions w-11/12 flex justify-start mt-2 flex-shrink-0">
+        <button onClick={playWAV} className="bg-blue-500 text-white py-2 px-4 rounded mt-4 ml-4">
           Play WAV
         </button>
+        {pause && (
+          <button onClick={exportToPNG} className="bg-blue-500 text-white py-2 px-4 rounded mt-4 ml-4">
+            Export to PNG
+          </button>
+        )}
       </div>
       <NFTMintingModal isOpen={isDownloading} onClose={handleCloseModal} url={downloadURL} />
     </div>
@@ -401,3 +431,4 @@ const MusicSheetPage: React.FC = () => {
 };
 
 export default MusicSheetPage;
+
