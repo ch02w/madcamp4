@@ -25,7 +25,7 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className = "pageBack" style={{ position: 'relative', height: '100vh', background: 'linear-gradient(to right bottom, #000000, #30034A)' }}>
+      <div className = "pageBack" style={{ position: 'relative', minHeight: '100vh', background: 'linear-gradient(to right bottom, #000000, #30034A)' }}>
         <MouseParticles
           g={1.5}
           color="random"

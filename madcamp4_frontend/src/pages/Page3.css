@@ -2,7 +2,6 @@
     padding: 1rem;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(to right bottom, #000000, #30034A);
   }
   
   .content {

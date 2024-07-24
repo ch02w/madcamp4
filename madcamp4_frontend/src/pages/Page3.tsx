@@ -366,9 +366,8 @@ const MusicSheetPage: React.FC = () => {
   }
   return (
     <div
-      className="p-4"
+      className="page-container"
       style={{
-        height: '100vh',
         width: '100vw',
         display: 'flex',
         flexDirection: 'column',
