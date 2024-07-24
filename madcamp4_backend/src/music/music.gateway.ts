@@ -36,7 +36,7 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.logger.log('Operation phase started');
       this.server.emit('pause', false); // Resume
       this.initializeNotes();
-      this.server.emit('clearNotes', this.notes);
+      this.server.emit('updateSheet', this.notes);
     });
 
     this.timeManager.on('rest', () => {
