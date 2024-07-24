@@ -6,7 +6,7 @@ const ChatComponent: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ sender: string; message: string }[]>([]);
   const [input, setInput] = useState('');
-  const [sender, setSender] = useState(`익명${Math.floor(Math.random() * 1000)}`); // 익명 사용자 이름 생성
+  const [sender, setSender] = useState(`익명${Math.floor(Math.random() * 1000)}`);
   const [header, setHeader] = useState('1분반 화이팅!');
   const [headerInput, setHeaderInput] = useState(header);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,7 +92,7 @@ const ChatComponent: React.FC = () => {
     <div>
       <button
         onClick={toggleChat}
-        className="fixed bottom-4 right-4 bg-blue-500 text-white rounded-full shadow-lg"
+        className="fixed bottom-8 right-8 bg-transparent text-white rounded-full shadow-lg"
         style={{ zIndex: 10000, width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <FaCommentDots className="h-6 w-6" />
@@ -104,7 +104,9 @@ const ChatComponent: React.FC = () => {
         style={{
           zIndex: 10000,
           transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 0.3s ease, opacity 0.3s ease'
+          transition: 'transform 0.3s ease, opacity 0.3s ease',
+          backgroundColor: '#2d2d2d', // 배경색을 어둡게 변경
+          color: 'white', // 텍스트 색상을 하얗게 변경
         }}
         ref={chatRef}
       >
@@ -115,10 +117,10 @@ const ChatComponent: React.FC = () => {
               value={headerInput}
               onChange={handleHeaderChange}
               onKeyPress={handleHeaderKeyPress}
-              className="w-full border border-gray-300 rounded p-2 mb-2 flex-grow"
+              className="w-full border border-gray-600 rounded p-2 mb-2 flex-grow bg-gray-800 text-white"
             />
           </div>
-          <div className="overflow-y-scroll h-64 mb-2 flex-grow">
+          <div className="overflow-y-scroll h-64 mb-2 flex-grow bg-gray-800">
             {messages.map((msg, index) => (
               <div key={index} className="mb-2">
                 <strong>{msg.sender}:</strong> {msg.message}
@@ -132,11 +134,8 @@ const ChatComponent: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="w-full border border-gray-300 rounded p-2 mb-2"
+            className="w-full border border-gray-600 rounded p-2 mb-2 bg-gray-800 text-white"
           />
-          <button onClick={sendMessage} className="bg-blue-500 text-white py-2 px-4 rounded">
-            Send
-          </button>
         </div>
       </div>
     </div>
