@@ -3,8 +3,7 @@ import CRDTCanvas from '../components/CRDTCanvas';
 import socketService from '../services/SocketService';
 import { SketchPicker, ColorResult } from 'react-color';
 import ThreeView from '../components/ThreeView';
-import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
-import '@leenguyen/react-flip-clock-countdown/dist/index.css';
+import Timer from '../components/Timer';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import './Page2.css';
@@ -116,16 +115,7 @@ const Page2: React.FC = () => {
 
   return (
     <div className="page-container" style={{ ...backgroundStyle }}>
-      <div className="timer-container">
-        <div className="timer">
-          <FlipClockCountdown
-            to={Date.now() + remainingTime}
-            labels={['', '', '', 'Seconds']}
-            showLabels={false}
-            duration={0.5}
-          />
-        </div>
-      </div>
+      <Timer remainingTime={remainingTime} />
       <div className="content">
         <div className="canvas-wrapper">
           <CRDTCanvas pause={pause} selectedColor={selectedColor} />

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import socketService from '../services/SocketService';
+import socketService from '../SocketService';
+import Timer from '../components/Timer';
 import Vex from 'vexflow';
 import MidiWriter from 'midi-writer-js'
 import * as Tone from 'tone';
 
 const MusicSheetPage: React.FC = () => {
+  const [remainingTime, setRemainingTime] = useState<number>(0);
   const [notes, setNotes] = useState<{note: number, time: number}[]>(Array.from({ length: 64 }, (_, index) => ({ note: -1, time: index + 1 })));
   const vexRef = useRef<HTMLDivElement>(null);
   const noteMap = ['d#/5', 'd/5', 'c#/5', 'c/5', 'b/4', 'a#/4', 'a/4', 'g#/4', 'g/4', 'f#/4', 'f/4', 'e/4', 'd#/4', 'd/4', 'c#/4', 'c/4'];
@@ -14,6 +16,10 @@ const MusicSheetPage: React.FC = () => {
 
 
   useEffect(() => {
+    socketService.on('remainingTime', (time: number) => {
+      setRemainingTime(time);
+    });
+
     renderSheetMusic(notes);
     socketService.on('updateSheet', (newNotes: {note: number, time: number}[]) => {
       setNotes(newNotes);
@@ -292,6 +298,7 @@ const MusicSheetPage: React.FC = () => {
 
   return (
     <div className="p-4" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Timer remainingTime={remainingTime} />
       <div className="toolbar" style={{
         width: '90%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px'
       }}>

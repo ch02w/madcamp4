@@ -1,0 +1,47 @@
+.page-container {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 4rem);
+  }
+  
+  .toolbar {
+    width: 90%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+  
+  .wave-selector {
+    display: flex;
+    align-items: center;
+  }
+  
+  .bpm-slider {
+    display: flex;
+    align-items: center;
+  }
+  
+  .note-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(66, 1fr);
+    gap: 0;
+  }
+  
+  .actions {
+    width: 90%;
+    display: flex;
+    justify-content: space-evenly;
+    margin-top: 10px;
+    flex-shrink: 0;
+  }
+  
+  .actions button {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+  }
+  
