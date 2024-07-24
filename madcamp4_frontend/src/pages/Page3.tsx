@@ -5,6 +5,8 @@ import Vex from 'vexflow';
 import * as Tone from 'tone';
 import NFTMintingModal from '../components/NFTMintingModal';
 import { render } from '@testing-library/react';
+import { PiWaveSquareThin, PiWaveSineThin } from 'react-icons/pi';
+
 
 const MusicSheetPage: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);
@@ -19,8 +21,19 @@ const MusicSheetPage: React.FC = () => {
   const [imageURL, setImageURL] = useState<string>('');
   const [pause, setPause] = useState<boolean>(false);
   const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({});
+  const [canPick, setCanPick] = useState<boolean>(true);
 
 
+  useEffect(() => {
+    if (!canPick) {
+      const timeoutId = setTimeout(() => {
+        setCanPick(true);
+      }, 1000);
+
+      return () => clearTimeout(timeoutId);
+    }
+    
+  }, [canPick]);
 
   useEffect(() => {
     socketService.emit('requestSheet');
@@ -69,7 +82,6 @@ const MusicSheetPage: React.FC = () => {
   }, [notes]);
 
   const addNote = (note: number, time: number) => {
-    if (pause) return;
     const newNote = { note, time };
     socketService.emit('addNote', newNote);
   };
@@ -269,7 +281,9 @@ const MusicSheetPage: React.FC = () => {
   };
 
   const handleCellClick = (row: number, col: number) => {
+    if (!canPick || pause) return;
     const time = col;
+    setCanPick(false);
     addNote(row, time);
   };
 
@@ -338,8 +352,8 @@ const MusicSheetPage: React.FC = () => {
 
   };
 
-  const handleWaveChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setWave(event.target.value);
+  const handleWaveChange = () => {
+    setWave(wave === 'sine' ? 'square' : 'sine');
   };
 
   const handleBPMChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -357,13 +371,13 @@ const MusicSheetPage: React.FC = () => {
       <div className="toolbar" style={{
         width: '90%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px'
       }}>
-        <div className="wave-selector" style={{ display: 'flex', alignItems: 'center' }}>
-          <label style={{ marginRight: '10px' }}>Wave:</label>
-          <select onChange={handleWaveChange} style={{ padding: '5px' }}>
-            <option value="sine">Sine</option>
-            <option value="square">Square</option>
-          </select>
-        </div>
+        <button 
+          onClick={handleWaveChange} 
+          style={{ padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="bg-gray-200 hover:bg-gray-300 rounded"
+        >
+          {wave === 'sine' ? <PiWaveSineThin /> : <PiWaveSquareThin />}
+        </button>
         <div className="bpm-slider" style={{ display: 'flex', alignItems: 'center' }}>
           <label style={{ marginRight: '10px' }}>BPM:</label>
           <input type="range" min="30" max="99" onChange={handleBPMChange} style={{ width: '200px' }} />
