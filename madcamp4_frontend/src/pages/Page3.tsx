@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import socketService from '../services/SocketService';
 import Timer from '../components/Timer';
 import Vex from 'vexflow';
-import MidiWriter from 'midi-writer-js'
 import * as Tone from 'tone';
+import NFTMintingModal from '../components/NFTMintingModal';
 
 const MusicSheetPage: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState<number>(0);
@@ -13,6 +13,9 @@ const MusicSheetPage: React.FC = () => {
   const toneMap = ['D#5', 'D5', 'C#5', 'C5', 'B4', 'A#4', 'A4', 'G#4', 'G4', 'F#4', 'F4', 'E4', 'D#4', 'D4', 'C#4', 'C4'];
   const [bpm, setBPM] = useState(60);
   const [wave, setWave] = useState('sine');
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadURL, setDownloadURL] = useState<string>('');
+  const [imageURL, setImageURL] = useState<string>('');
 
 
   useEffect(() => {
@@ -238,29 +241,44 @@ const MusicSheetPage: React.FC = () => {
   };
 
 
-  const exportToMIDI = () => {
-    const track = new MidiWriter.Track();
-    track.setTempo(120);
-    track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: 1 }));
+  const exportToPNG = async () => {
+  const svg1 = vexRef.current?.querySelector('svg:nth-of-type(1)');
+  const svg2 = vexRef.current?.querySelector('svg:nth-of-type(2)');
+  if (!svg1 || !svg2) {
+    console.error('SVG elements not found.');
+    return;
+  }
 
-    notes.forEach((note, index) => {
-      if (note.note !== -1) {
-        const noteName = toneMap[note.note];
-        track.addEvent(new MidiWriter.NoteEvent({ pitch: [noteName], duration: '16', wait: '16' }));
-      }
-      else {
-        track.addEvent(new MidiWriter.NoteEvent({ restDuration: '16' }));
-      }
-    });
-
-
-    const write = new MidiWriter.Writer([track]);
-    const base64 = write.base64();
-    const a = document.createElement('a');
-    a.href = `data:audio/midi;base64,${base64}`;
-    a.download = 'music.mid';
-    a.click();
+  const svgData1 = new XMLSerializer().serializeToString(svg1);
+  const svgData2 = new XMLSerializer().serializeToString(svg2);
+  
+  const canvas = document.createElement('canvas');
+  const svgSize1 = svg1.getBoundingClientRect();
+  const svgSize2 = svg2.getBoundingClientRect();
+  canvas.width = Math.max(svgSize1.width, svgSize2.width);
+  canvas.height = svgSize1.height + svgSize2.height;
+  const ctx = canvas.getContext('2d');
+  
+  const img1 = new Image();
+  img1.src = `data:image/svg+xml;base64,${btoa(svgData1)}`;
+  img1.onload = () => {
+    ctx?.drawImage(img1, 0, 0);
+    const img2 = new Image();
+    img2.src = `data:image/svg+xml;base64,${btoa(svgData2)}`;
+    img2.onload = async () => {
+      ctx?.drawImage(img2, 0, svgSize1.height);
+      const pngData = canvas.toDataURL('image/png');
+      setImageURL(pngData);
+      
+      const blob = await fetch(pngData).then(res => res.blob());
+      const file = new File([blob], 'sheet.png', { type: 'image/png' });
+      const url = URL.createObjectURL(file);
+      setDownloadURL(url);
+      setIsDownloading(true);
+    };
   };
+};
+
 
   const playWAV = async () => {
     const synth = new Tone.Synth({
@@ -293,6 +311,10 @@ const MusicSheetPage: React.FC = () => {
 
   const handleBPMChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setBPM(parseInt(event.target.value));
+  }
+
+  const handleCloseModal = () => {
+    setIsDownloading(false);
   }
 
 
@@ -365,15 +387,16 @@ const MusicSheetPage: React.FC = () => {
         <button onClick={clearNotes} className="bg-red-500 text-white py-2 px-4 rounded mt-4">
           Clear
         </button>
-        <button onClick={exportToMIDI} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
-          Export to MIDI
+        <button onClick={exportToPNG} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
+          Export to PNG
         </button>
         <button onClick={playWAV} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
           Play WAV
         </button>
       </div>
+      <NFTMintingModal isOpen={isDownloading} onClose={handleCloseModal} url={downloadURL}/>
     </div>
   );
-}
+};
 
 export default MusicSheetPage;
