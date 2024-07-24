@@ -50,7 +50,7 @@ const Page2: React.FC = () => {
       });
       setTimeout(() => {
         setBackgroundStyle({
-          backgroundColor: 'black',
+          backgroundColor: 'transparent',
           transition: 'background-color 1s'
         });
       }, 1000);
@@ -134,17 +134,6 @@ const Page2: React.FC = () => {
   };
 
   const handleCanvasClick = () => {
-    setBackgroundStyle({
-      backgroundColor: 'rgba(0, 125, 0, 0.5)',
-      transition: 'background-color 1s'
-    });
-
-    setTimeout(() => {
-      setBackgroundStyle({
-        backgroundColor: 'black',
-        transition: 'background-color 1s'
-      });
-    }, 1000);
   };
 
   const handleCloseModal = () => {

@@ -3,7 +3,6 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 4rem);
-    background: linear-gradient(to right bottom, #000000, #30034A);
 }
 
 .content {

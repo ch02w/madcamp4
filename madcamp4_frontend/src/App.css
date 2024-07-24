@@ -6,6 +6,10 @@ body {
   font-family: Arial, sans-serif;
 }
 
+.pageBack {  
+  background: linear-gradient(to right bottom, #000000, #30034A);
+}
+
 .App {
   text-align: center;
   background-color: black;
