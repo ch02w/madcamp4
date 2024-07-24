@@ -4,9 +4,9 @@ import Timer from '../components/Timer';
 import Vex from 'vexflow';
 import * as Tone from 'tone';
 import NFTMintingModal from '../components/NFTMintingModal';
-import { render } from '@testing-library/react';
 import { PiWaveSquare, PiWaveSine } from 'react-icons/pi';
 import { FaPlay, FaCoins } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 
 const MusicSheetPage: React.FC = () => {
@@ -23,12 +23,15 @@ const MusicSheetPage: React.FC = () => {
   const [pause, setPause] = useState<boolean>(false);
   const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({});
   const [canPick, setCanPick] = useState<boolean>(true);
+  const [showLoadingCursor, setShowLoadingCursor] = useState<boolean>(false);
+  const navigate = useNavigate();
 
 
   useEffect(() => {
     if (!canPick) {
       const timeoutId = setTimeout(() => {
         setCanPick(true);
+        setShowLoadingCursor(false);
       }, 1000);
 
       return () => clearTimeout(timeoutId);
@@ -285,6 +288,7 @@ const MusicSheetPage: React.FC = () => {
     if (!canPick || pause) return;
     const time = col;
     setCanPick(false);
+    setShowLoadingCursor(true);
     addNote(row, time);
   };
 
@@ -383,7 +387,9 @@ const MusicSheetPage: React.FC = () => {
           top: '10px',
           left: '50%',
           transform: 'translateX(-50%)',
+          cursor: 'pointer',
         }}
+        onClick={() => navigate('/')}
       >
         <Timer remainingTime={remainingTime} />
       </div>
@@ -431,7 +437,7 @@ const MusicSheetPage: React.FC = () => {
           </button>
             {pause && (
               <button
-              onClick={playWAV}
+              onClick={exportToPNG}
               style={{
                 padding: '10px',
                 display: 'flex',
@@ -445,12 +451,17 @@ const MusicSheetPage: React.FC = () => {
               </button>
             )}
         </div>
-        <div className="bpm-slider" style={{ display: 'flex', alignItems: 'center' }}>
-          <label style={{ marginRight: '10px' }}>BPM:</label>
-          <input type="range" min="30" max="99" onChange={handleBPMChange} style={{ width: '200px' }} />
+        <div className="bpm-slider" style={{ display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '200px', color: 'white' }}>
+            <span>slow</span>
+            <span>fast</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <input type="range" min="30" max="99" onChange={handleBPMChange} style={{ width: '200px'}} />
+          </div>
         </div>
       </div>
-      <div className="mt-4" style={{ width: '90%', display: 'flex' }}>
+      <div className="mt-4" style={{ width: '90%', display: 'flex' , cursor: showLoadingCursor ? 'none' : 'default' }}>
         <div className="note-grid" style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(66, 1fr)', gap: '0' }}>
           {Array.from({ length: 16 }).map((_, row) =>
             Array.from({ length: 66 }).map((_, col) => {

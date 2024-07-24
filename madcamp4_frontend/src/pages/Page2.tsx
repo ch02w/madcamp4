@@ -9,6 +9,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import html2canvas from 'html2canvas';
 import NFTMintingModal from '../components/NFTMintingModal';
 import './Page2.css';
+import { useNavigate } from 'react-router-dom';
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -32,6 +33,7 @@ const Page2: React.FC = () => {
   const [isMinting, setIsMinting] = useState<boolean>(false);
   const [mintingURL, setMintingURL] = useState<string>('');
   const canvasRef = useRef<HTMLDivElement>(null);  // Reference to the canvas container
+  const navigate = useNavigate();
 
   useEffect(() => {
     socketService.on('remainingTime', (time: number) => {
@@ -138,8 +140,19 @@ const Page2: React.FC = () => {
 
   return (
     <div className="page-container" style={{ ...backgroundStyle }}>
-      <Timer remainingTime={remainingTime} />
-      <div className="content">
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          cursor: 'pointer',
+        }}
+        onClick={() => navigate('/')}
+      >
+        <Timer remainingTime={remainingTime} />
+      </div>
+      <div className="content" style={{marginTop: '50px'}}>
         <div className="canvas-wrapper" ref={canvasRef}>
           <CRDTCanvas pause={pause} selectedColor={selectedColor} onCanvasClick={handleCanvasClick} onCanvasUpdate={handleCanvasUpdate} />
         </div>
