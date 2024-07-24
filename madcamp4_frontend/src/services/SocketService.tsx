@@ -4,7 +4,7 @@ class SocketService {
   socket: Socket;
 
   constructor() {
-    this.socket = io('http://localhost:3001', {
+    this.socket = io(process.env.REACT_APP_SOCKET_URI || 'http://localhost:3001', {
       transports: ['websocket'],
       reconnectionAttempts: 5,
       timeout: 20000,
