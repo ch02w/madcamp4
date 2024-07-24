@@ -35,11 +35,17 @@ export class MusicGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('Client disconnected');
   }
 
+  @SubscribeMessage('requestSheet')
+  handleRequestSheet(): void {
+    console.log('Request Sheet');
+    this.server.emit('updateSheet', this.notes);
+  }
+
   @SubscribeMessage('addNote')
   handleAddNote(@MessageBody() noteData: { note: number; time: number }): void {
     console.log('Add Note');
     const { note, time } = noteData;
-    const noteIndex = this.notes.findIndex(n => n.time === time);
+    const noteIndex = this.notes.findIndex((n) => n.time === time);
 
     if (noteIndex !== -1) {
       if (this.notes[noteIndex].note === -1) {
