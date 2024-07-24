@@ -1,9 +1,12 @@
-// Page2.tsx
 import React, { useState, useEffect } from 'react';
 import CRDTCanvas from '../components/CRDTCanvas';
 import socketService from '../SocketService';
 import { SketchPicker, ColorResult } from 'react-color';
 import ThreeView from '../components/ThreeView';
+import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
+import '@leenguyen/react-flip-clock-countdown/dist/index.css';
+import * as THREE from 'three';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import './Page2.css';
 
 interface CanvasState {
@@ -17,12 +20,13 @@ const Page2: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState<string>('black');
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [canvasStates, setCanvasStates] = useState<CanvasState[]>(Array(6).fill({}));
-  const [glbUrl, setGlbUrl] = useState<string | null>(null);
+  const [showDownloadButton, setShowDownloadButton] = useState<boolean>(false);
 
   useEffect(() => {
     socketService.on('remainingTime', (time: number) => {
       setRemainingTime(time);
       setPause(time <= 30000);
+      setShowDownloadButton(time <= 30000);
     });
 
     socketService.on('canvasState', (state: { colors: string[], data: CanvasState[] }) => {
@@ -42,33 +46,85 @@ const Page2: React.FC = () => {
       }, 1000);
     });
 
-    socketService.on('glbGenerated', (data: { url: string }) => {
-      setGlbUrl(data.url);
-    });
-
     return () => {
       socketService.off('remainingTime');
       socketService.off('canvasState');
       socketService.off('clearCanvas');
-      socketService.off('glbGenerated');
     };
   }, []);
-
-  const getTimeText = () => {
-    if (pause) {
-      return `Resting time: ${Math.floor(remainingTime / 1000)} seconds`;
-    }
-    return `Drawing time: ${Math.floor(remainingTime / 1000)} seconds`;
-  };
 
   const handleColorChange = (color: ColorResult) => {
     setSelectedColor(color.hex);
   };
 
+  const generateGLB = () => {
+    const scene = new THREE.Scene();
+    const materialArray = canvasStates.map((canvasState) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        Object.entries(canvasState).forEach(([key, { value }]) => {
+          const [_, x, y] = key.split('-');
+          ctx.fillStyle = `#${value.toString(16).padStart(6, '0')}`;
+          ctx.fillRect(parseInt(x), parseInt(y), 10, 10);
+        });
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      return new THREE.MeshBasicMaterial({ map: texture });
+    });
+
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const materials = [
+      materialArray[0], // Front (z+)
+      materialArray[1], // Back (z-)
+      materialArray[2], // Top (y+)
+      materialArray[3], // Bottom (y-)
+      materialArray[4], // Left (x-)
+      materialArray[5], // Right (x+)
+    ];
+    const cube = new THREE.Mesh(geometry, materials);
+    scene.add(cube);
+
+    const exporter = new GLTFExporter();
+    exporter.parse(
+      scene,
+      (result) => {
+        if (result instanceof ArrayBuffer) {
+          saveArrayBuffer(result, 'canvas.glb');
+        } else {
+          console.error('Unexpected result format from GLTFExporter');
+        }
+      },
+      (error) => console.error('An error occurred during parsing', error),
+      { binary: true }
+    );
+  };
+
+  const saveArrayBuffer = (buffer: ArrayBuffer, filename: string) => {
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.href = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
+    link.download = filename;
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="page-container" style={{ ...backgroundStyle }}>
-      <div className="timer">
-        {getTimeText()}
+      <div className="timer-container">
+        <div className="timer">
+          <FlipClockCountdown
+            to={Date.now() + remainingTime}
+            labels={['', '', '', 'Seconds']}
+            showLabels={false}
+            duration={0.5}
+          />
+        </div>
       </div>
       <div className="content">
         <div className="canvas-wrapper">
@@ -90,10 +146,10 @@ const Page2: React.FC = () => {
             <SketchPicker color={selectedColor} onChangeComplete={handleColorChange} />
           </div>
         )}
-        {glbUrl && (
-          <a href={glbUrl} download="canvas.glb" className="download-button">
+        {showDownloadButton && (
+          <button onClick={generateGLB} className="download-button">
             Download GLB
-          </a>
+          </button>
         )}
       </div>
     </div>

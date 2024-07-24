@@ -1,13 +1,8 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  MessageBody,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-} from '@nestjs/websockets';
+// src/canvas/canvas.gateway.ts
+import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { TimeManager } from '../timeManager';
 
 interface CanvasState {
   [key: string]: { value: number; timestamp: number };
@@ -28,6 +23,7 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private readonly logger = new Logger(CanvasGateway.name);
+  private readonly timeManager = new TimeManager();
 
   private canvasStates: CanvasState[] = Array(6).fill(null).map(() => {
     const state: CanvasState = {};
@@ -39,22 +35,15 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return state;
   });
 
-  private drawInterval = 270000; // 4.5 minutes in milliseconds
-  private breakInterval = 30000; // 30 seconds in milliseconds
-  private roundInterval = this.drawInterval + this.breakInterval;
-
   constructor() {
     this.logger.log('CanvasGateway constructor called');
-    this.scheduleNextEvent();
-    setInterval(() => {
-      this.emitRemainingTime();
-    }, 1000);
+    this.setupTimeManager();
   }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
     client.emit('canvasState', { colors: [], data: this.canvasStates }); // Send current state to new client
-    client.emit('remainingTime', this.getRemainingTime());
+    client.emit('remainingTime', this.timeManager.getRemainingTime());
   }
 
   handleDisconnect(client: Socket) {
@@ -64,9 +53,9 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('canvasOperation')
   async handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
     this.logger.log('Received canvasOperation:', operation);
-    if (this.isDrawingPaused() && operation.type === 'draw') {
-      this.logger.log('Ignoring draw operation during break');
-      return; // Ignore draw operations during break
+    if (this.timeManager.getCurrentState() === 'rest' && operation.type === 'draw') {
+      this.logger.log('Ignoring draw operation during rest period');
+      return; // Ignore draw operations during rest
     }
 
     try {
@@ -126,66 +115,26 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log('Cleared canvas');
   }
 
-  handleBreakEnd() {
-    this.logger.log('Break phase ended, clearing canvas...');
-    this.handleClearOperation();
-  }
+  setupTimeManager() {
+    this.timeManager.on('operation', () => {
+      this.logger.log('Operation phase started');
+      this.server.emit('pause', false); // Resume drawing
+      this.handleClearOperation();
+    });
 
-  getRemainingTime() {
-    const currentTime = new Date();
-    const minutes = currentTime.getUTCMinutes();
-    const seconds = currentTime.getUTCSeconds();
-    const milliseconds = currentTime.getUTCMilliseconds();
-    const totalMilliseconds = (minutes % 5) * 60000 + seconds * 1000 + milliseconds;
-    this.logger.log('Calculating remaining time:', totalMilliseconds);
-    return this.roundInterval - totalMilliseconds;
+    this.timeManager.on('rest', () => {
+      this.logger.log('Rest phase started');
+      this.server.emit('pause', true); // Pause drawing
+    });
+
+    this.emitRemainingTime();
   }
 
   emitRemainingTime() {
-    const remainingTime = this.getRemainingTime();
-    this.logger.log('Emitting remaining time:', remainingTime);
-    this.server.emit('remainingTime', remainingTime);
-  }
-
-  scheduleNextEvent() {
-    this.logger.log('Scheduling next event');
-    const currentTime = new Date();
-    const minutes = currentTime.getUTCMinutes();
-    const seconds = currentTime.getUTCSeconds();
-    const milliseconds = currentTime.getUTCMilliseconds();
-    const totalMilliseconds = (minutes % 5) * 60000 + seconds * 1000 + milliseconds;
-
-    let nextEventTime;
-    if (minutes % 5 < 4 || (minutes % 5 === 4 && seconds < 30)) {
-      // Drawing phase
-      nextEventTime = (4 * 60000 + 30000) - totalMilliseconds;
-    } else {
-      // Break phase
-      nextEventTime = (5 * 60000) - totalMilliseconds;
-    }
-
-    this.logger.log('Next event time scheduled in ms:', nextEventTime);
-    setTimeout(() => {
-      if (this.isDrawingActive()) {
-        this.handleBreakEnd();
-      } else {
-        this.handleClearOperation();
-      }
-      this.scheduleNextEvent();
-    }, nextEventTime);
-  }
-
-  isDrawingActive() {
-    const currentTime = new Date();
-    const minutes = currentTime.getUTCMinutes();
-    const seconds = currentTime.getUTCSeconds();
-    const milliseconds = currentTime.getUTCMilliseconds();
-    const totalMilliseconds = (minutes % 5) * 60000 + seconds * 1000 + milliseconds;
-    this.logger.log('Checking if drawing is active:', totalMilliseconds < this.drawInterval);
-    return totalMilliseconds < this.drawInterval;
-  }
-
-  isDrawingPaused() {
-    return this.getRemainingTime() <= this.breakInterval;
+    setInterval(() => {
+      const remainingTime = this.timeManager.getRemainingTime();
+      this.logger.log('Emitting remaining time:', remainingTime);
+      this.server.emit('remainingTime', remainingTime);
+    }, 1000);
   }
 }
