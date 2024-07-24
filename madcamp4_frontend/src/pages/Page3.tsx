@@ -19,6 +19,7 @@ const MusicSheetPage: React.FC = () => {
 
 
   useEffect(() => {
+    socketService.emit('requestSheet');
     socketService.on('remainingTime', (time: number) => {
       setRemainingTime(time);
     });
