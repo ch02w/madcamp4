@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socketService from '../SocketService';
 import Vex from 'vexflow';
+import MidiWriter from 'midi-writer-js'
 import * as Tone from 'tone';
+import { EnumDeclaration } from 'typescript';
 
 const MusicSheetPage: React.FC = () => {
   const [notes, setNotes] = useState<{note: number, time: number}[]>(Array.from({ length: 64 }, (_, index) => ({ note: -1, time: index + 1 })));
   const vexRef = useRef<HTMLDivElement>(null);
   const noteMap = ['d#/5', 'd/5', 'c#/5', 'c/5', 'b/4', 'a#/4', 'a/4', 'g#/4', 'g/4', 'f#/4', 'f/4', 'e/4', 'd#/4', 'd/4', 'c#/4', 'c/4'];
   const toneMap = ['D#5', 'D5', 'C#5', 'C5', 'B4', 'A#4', 'A4', 'G#4', 'G4', 'F#4', 'F4', 'E4', 'D#4', 'D4', 'C#4', 'C4'];
+  const [bpm, setBPM] = useState(120);
+  const [wave, setWave] = useState('sine');
+
 
   useEffect(() => {
     renderSheetMusic(notes);
@@ -31,7 +36,7 @@ const MusicSheetPage: React.FC = () => {
   };
 
   const renderSheetMusic = (notes : { note: number; time: number }[]) => {
-    const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Modifier } = Vex.Flow;
+    const { Renderer, Stave, Voice, Formatter, Accidental } = Vex.Flow;
   
     const div = vexRef.current!;
     div.innerHTML = '';
@@ -188,13 +193,14 @@ const MusicSheetPage: React.FC = () => {
         voice4.addTickable(transformedNotes[i]);
       }
     }
+
   
     const formatter = new Formatter();
 
-    formatter.joinVoices([voice1]).format([voice1], staveWidth);
-    formatter.joinVoices([voice2]).format([voice2], staveWidth);
-    formatter.joinVoices([voice3]).format([voice3], staveWidth);
-    formatter.joinVoices([voice4]).format([voice4], staveWidth);
+    formatter.joinVoices([voice1]).format([voice1], staveWidth-100);
+    formatter.joinVoices([voice2]).format([voice2], staveWidth-100);
+    formatter.joinVoices([voice3]).format([voice3], staveWidth-100);
+    formatter.joinVoices([voice4]).format([voice4], staveWidth-100);
 
     const centerAlignSingleNote = (voice: Vex.Flow.Voice, stave: Vex.Flow.Stave) => {
       const tickables = voice.getTickables();
@@ -224,14 +230,43 @@ const MusicSheetPage: React.FC = () => {
   };
 
 
-  const exportToWAV = async () => {
-    const synth = new Tone.Synth().toDestination();
+  const exportToMIDI = () => {
+    const track = new MidiWriter.Track();
+    track.setTempo(120);
+    track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: 1 }));
+
+    notes.forEach((note, index) => {
+      if (note.note !== -1) {
+        const noteName = toneMap[note.note];
+        track.addEvent(new MidiWriter.NoteEvent({ pitch: [noteName], duration: '16', wait: '16' }));
+      }
+      else {
+        track.addEvent(new MidiWriter.NoteEvent({ restDuration: '16' }));
+      }
+    });
+
+
+    const write = new MidiWriter.Writer([track]);
+    const base64 = write.base64();
+    const a = document.createElement('a');
+    a.href = `data:audio/midi;base64,${base64}`;
+    a.download = 'music.mid';
+    a.click();
+  };
+
+  const playWAV = async () => {
+    const synth = new Tone.Synth({
+      volume: 10,
+      oscillator: {
+        type: wave === 'sine' ? 'sine' : 'square'
+      }
+    }).toDestination();
     const now = Tone.now();
 
     notes.forEach((note, index) => {
       if (note.note !== -1) {
         const noteName = toneMap[note.note];
-        const time = index*0.25;
+        const time = index*(1/bpm);
         synth.triggerAttackRelease(noteName, '16n', now + time);
       }
     });
@@ -241,60 +276,92 @@ const MusicSheetPage: React.FC = () => {
     synth.connect(recorder);
     recorder.start();
 
-    setTimeout(async () => {
-      const recording = await recorder.stop();
-      const url = URL.createObjectURL(recording);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'music.wav';
-      a.click();
-    }, notes.length * 250);
   };
+
+  const handleWaveChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setWave(event.target.value);
+  };
+
+  const handleBPMChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setBPM(parseInt(event.target.value));
+  }
+
 
   return (
     <div className="p-4" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div className="mt-4" style={{ width: '90%', display: 'flex' }}>
-        <div className="piano" style={{ width: '10%', display: 'grid', gridTemplateRows: 'repeat(16, 1fr)', gap: '0' }}>
-          {['D#5', 'D5', 'C#5', 'C5', 'B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'].map((note, index) => (
-            <div key={index} style={{ height: '100%', backgroundColor: ['C#', 'D#', 'F#', 'G#', 'A#', 'C#5', 'D#5'].includes(note) ? 'black' : 'white', color: ['C#', 'D#', 'F#', 'G#', 'A#', 'C#5', 'D#5'].includes(note) ? 'white' : 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {note}
-            </div>
-          ))}
+      <div className="toolbar" style={{
+        width: '90%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px'
+      }}>
+        <div className="wave-selector" style={{ display: 'flex', alignItems: 'center' }}>
+          <label style={{ marginRight: '10px' }}>Wave:</label>
+          <select onChange={handleWaveChange} style={{ padding: '5px' }}>
+            <option value="sine">Sine</option>
+            <option value="square">Square</option>
+          </select>
         </div>
-        <div className="mt-4" style={{ width: '90%', display: 'grid', gridTemplateColumns: 'repeat(64, 1fr)', gap: '0' }}>
+        <div className="bpm-slider" style={{ display: 'flex', alignItems: 'center' }}>
+          <label style={{ marginRight: '10px' }}>BPM:</label>
+          <input type="range" min="2" max="30" onChange={handleBPMChange} style={{ width: '200px' }} />
+        </div>
+      </div>
+      <div className="mt-4" style={{ width: '90%', display: 'flex' }}>
+        <div className="note-grid" style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(66, 1fr)', gap: '0' }}>
           {Array.from({ length: 16 }).map((_, row) =>
-            Array.from({ length: 64 }).map((_, col) => (
-              <button
-                key={`${row}-${col}`}
-                className="border border-gray-300"
-                onClick={() => handleCellClick(row, col)}
-                style={{
-                  backgroundColor: notes.some(note => noteMap[note.note] === noteMap[row] && note.time === col) ? 'black' : 'white',
-                  width: '100%',
-                  height: '0',
-                  paddingBottom: '100%'
-                }}
-              >
-              </button>
-            ))
+            Array.from({ length: 66 }).map((_, col) => {
+              const isPianoKey = col < 2;
+              const isBlackKey = ['c#/4', 'd#/4', 'f#/4', 'g#/4', 'a#/4', 'c#/5', 'd#/5'].includes(noteMap[row]);
+              
+              return (
+                <div
+                  key={`${row}-${col}`}
+                  onClick={() => !isPianoKey && handleCellClick(row, col - 2)}
+                  style={{
+                    backgroundColor: isPianoKey ? (isBlackKey ? 'black' : 'white') : (notes.some(note => noteMap[note.note] === noteMap[row] && note.time === (col - 2)) ? 'black' : 'white'),
+                    color: isPianoKey ? (isBlackKey ? 'white' : 'black') : 'black',
+                    width: '100%',
+                    paddingBottom: '100%',
+                    position: 'relative',
+                    border: isPianoKey ? 'none' : '1px solid gray',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderBottom: '1px solid gray'
+                  }}
+                >
+                  {isPianoKey ? null : col !== 2 && (col-2) % 16 === 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        width: '1px',
+                        height: '100%',
+                        backgroundColor: 'red',
+                        left: 0,
+                        top: 0
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
       <div className="mt-4" style={{ width: '90%' }}>
-        <div ref={vexRef}/>
+        <div ref={vexRef} />
       </div>
-      <button 
-        onClick={clearNotes} 
-        className="bg-red-500 text-white py-2 px-4 rounded mt-4"
-      >
-        Clear
-      </button>
-      <button 
-        onClick={exportToWAV} 
-        className="bg-green-500 text-white py-2 px-4 rounded mt-4"
-      >
-        Export to WAV
-      </button>
+      <div className="actions" style={{
+        width: '90%', display: 'flex', justifyContent: 'space-evenly', marginTop: '10px', flexShrink: '0'
+      }}>
+        <button onClick={clearNotes} className="bg-red-500 text-white py-2 px-4 rounded mt-4">
+          Clear
+        </button>
+        <button onClick={exportToMIDI} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
+          Export to MIDI
+        </button>
+        <button onClick={playWAV} className="bg-blue-500 text-white py-2 px-4 rounded mt-4">
+          Play WAV
+        </button>
+      </div>
     </div>
   );
 }
