@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import socketService from '../SocketService';
+import socketService from '../services/SocketService';
 import Vex from 'vexflow';
 import MidiWriter from 'midi-writer-js'
 import * as Tone from 'tone';
-import { EnumDeclaration } from 'typescript';
 
 const MusicSheetPage: React.FC = () => {
   const [notes, setNotes] = useState<{note: number, time: number}[]>(Array.from({ length: 64 }, (_, index) => ({ note: -1, time: index + 1 })));

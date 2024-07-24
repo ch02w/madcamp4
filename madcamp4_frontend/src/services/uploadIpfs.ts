@@ -1,17 +1,17 @@
 import axios from 'axios';
-import FormData = require('form-data');
-import fs = require('fs');
+import FormData from 'form-data';
+import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 const JWT = process.env.PINATA_JWT;
 
-export async function uploadIpfs() {
+export async function uploadIpfs(url: string) {
   try {
     const formData = new FormData();
 
-    const file = fs.createReadStream('./asdf.jpg');
+    const file = fs.createReadStream(url);
     formData.append('file', file);
 
     const pinataMetadata = JSON.stringify({
