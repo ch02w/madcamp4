@@ -1,4 +1,3 @@
-// src/canvas/canvas.gateway.ts
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -45,7 +44,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
   constructor() {
-    this.logger.log('CanvasGateway constructor called');
     this.setupTimeManager();
   }
 
@@ -66,7 +64,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('canvasOperation')
   async handleCanvasOperation(@MessageBody() operation: CanvasOperation) {
-    this.logger.log('Received canvasOperation:', operation);
     if (
       this.timeManager.getCurrentState() === 'rest' &&
       operation.type === 'draw'
@@ -98,7 +95,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
     value: number;
     timestamp: number;
   }) {
-    this.logger.log('Handling draw operation with payload:', payload);
     const { canvasIndex, key, value, timestamp } = payload;
     if (
       !this.canvasStates[canvasIndex][key] ||
@@ -113,7 +109,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleClearOperation() {
-    this.logger.log('Handling clear operation');
     this.canvasStates = Array(6)
       .fill(null)
       .map(() => {
@@ -137,7 +132,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
       colors: [],
       data: this.canvasStates,
     });
-    this.logger.log('Cleared canvas');
   }
 
   setupTimeManager() {
@@ -158,7 +152,6 @@ export class CanvasGateway implements OnGatewayConnection, OnGatewayDisconnect {
   emitRemainingTime() {
     setInterval(() => {
       const remainingTime = this.timeManager.getRemainingTime();
-      this.logger.log('Emitting remaining time:', remainingTime);
       this.server.emit('remainingTime', remainingTime);
     }, 1000);
   }
